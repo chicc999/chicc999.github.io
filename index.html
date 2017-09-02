@@ -209,7 +209,7 @@
 </ul>
 </li>
 </ul>
-<p>在以上程序中，如果当前线程在获取锁过程中收到中断信号，是否依旧会执行unLock？写个测试程序如下：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div><div class="line">28</div><div class="line">29</div><div class="line">30</div><div class="line">31</div><div class="line">32</div><div class="line">33</div><div class="line">34</div><div class="line">35</div><div class="line">36</div><div class="line">37</div><div class="line">38</div><div class="line">39</div><div class="line">40</div><div class="line">41</div><div class="line">42</div><div class="line">43</div><div class="line">44</div><div class="line">45</div><div class="line">46</div><div class="line">47</div><div class="line">48</div><div class="line">49</div><div class="line">50</div><div class="line">51</div><div class="line">52</div><div class="line">53</div><div class="line">54</div></pre></td><td class="code"><pre><div class="line">public static void main(String[] args) &#123;</div><div class="line">		final FIFOMutex lock = new FIFOMutex();</div><div class="line"></div><div class="line">		final CountDownLatch countDownLatch = new CountDownLatch(1);</div><div class="line"></div><div class="line">		Thread t1 = new Thread(new Runnable() &#123;</div><div class="line">			@Override</div><div class="line">			public void run() &#123;</div><div class="line">				try &#123;</div><div class="line">					lock.lock();</div><div class="line">				&#125; finally &#123;</div><div class="line">					//通知主线程中断t2</div><div class="line">					countDownLatch.countDown();</div><div class="line"></div><div class="line">					long cur = System.currentTimeMillis();</div><div class="line"></div><div class="line">						try &#123;</div><div class="line">							//停止1s释放锁，让线程t2先被中断</div><div class="line">							TimeUnit.MILLISECONDS.sleep(1000);</div><div class="line">						&#125; catch (InterruptedException e) &#123;</div><div class="line">							//当前线程睡眠被中断，暂时不处理，中断信号复位</div><div class="line">							System.out.println(&quot;current thread&quot; + Thread.currentThread().getName() + &quot; sleep interrupted&quot;);</div><div class="line">						&#125;</div><div class="line"></div><div class="line">					lock.unlock();</div><div class="line"></div><div class="line"></div><div class="line">				&#125;</div><div class="line">			&#125;</div><div class="line">		&#125;);</div><div class="line">		Thread t2 = new Thread(new Runnable() &#123;</div><div class="line">			@Override</div><div class="line">			public void run() &#123;</div><div class="line">				try &#123;</div><div class="line">					lock.lock();</div><div class="line">				&#125; finally &#123;</div><div class="line">					lock.unlock();</div><div class="line">				&#125;</div><div class="line">			&#125;</div><div class="line">		&#125;);</div><div class="line"></div><div class="line">		t1.start();</div><div class="line">		t2.start();</div><div class="line"></div><div class="line">		try &#123;</div><div class="line">			countDownLatch.await();</div><div class="line">		&#125; catch (InterruptedException e) &#123;</div><div class="line">			e.printStackTrace();</div><div class="line">		&#125;</div><div class="line"></div><div class="line">		//收到信号，中断t2</div><div class="line">		t2.interrupt();</div><div class="line"></div><div class="line">	&#125;</div></pre></td></tr></table></figure></p>
+<p>在以上程序中，如果当前线程在获取锁过程中收到中断信号，是否依旧会执行unLock？写个测试程序如下：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div><div class="line">28</div><div class="line">29</div><div class="line">30</div><div class="line">31</div><div class="line">32</div><div class="line">33</div><div class="line">34</div><div class="line">35</div><div class="line">36</div><div class="line">37</div><div class="line">38</div><div class="line">39</div><div class="line">40</div><div class="line">41</div><div class="line">42</div><div class="line">43</div><div class="line">44</div><div class="line">45</div><div class="line">46</div><div class="line">47</div><div class="line">48</div><div class="line">49</div><div class="line">50</div><div class="line">51</div><div class="line">52</div><div class="line">53</div><div class="line">54</div></pre></td><td class="code"><pre><div class="line">public static void main(String[] args) &#123;</div><div class="line">	final FIFOMutex lock = new FIFOMutex();</div><div class="line"></div><div class="line">	final CountDownLatch countDownLatch = new CountDownLatch(1);</div><div class="line"></div><div class="line">	Thread t1 = new Thread(new Runnable() &#123;</div><div class="line">		@Override</div><div class="line">		public void run() &#123;</div><div class="line">			try &#123;</div><div class="line">				lock.lock();</div><div class="line">			&#125; finally &#123;</div><div class="line">				//通知主线程中断t2</div><div class="line">				countDownLatch.countDown();</div><div class="line"></div><div class="line">				long cur = System.currentTimeMillis();</div><div class="line"></div><div class="line">					try &#123;</div><div class="line">						//停止1s释放锁，让线程t2先被中断</div><div class="line">						TimeUnit.MILLISECONDS.sleep(1000);</div><div class="line">					&#125; catch (InterruptedException e) &#123;</div><div class="line">						//当前线程睡眠被中断，暂时不处理，中断信号复位</div><div class="line">						System.out.println(&quot;current thread&quot; + Thread.currentThread().getName() + &quot; sleep interrupted&quot;);</div><div class="line">					&#125;</div><div class="line"></div><div class="line">				lock.unlock();</div><div class="line"></div><div class="line"></div><div class="line">			&#125;</div><div class="line">		&#125;</div><div class="line">	&#125;);</div><div class="line">	Thread t2 = new Thread(new Runnable() &#123;</div><div class="line">		@Override</div><div class="line">		public void run() &#123;</div><div class="line">			try &#123;</div><div class="line">				lock.lock();</div><div class="line">			&#125; finally &#123;</div><div class="line">				lock.unlock();</div><div class="line">			&#125;</div><div class="line">		&#125;</div><div class="line">	&#125;);</div><div class="line"></div><div class="line">	t1.start();</div><div class="line">	t2.start();</div><div class="line"></div><div class="line">	try &#123;</div><div class="line">		countDownLatch.await();</div><div class="line">	&#125; catch (InterruptedException e) &#123;</div><div class="line">		e.printStackTrace();</div><div class="line">	&#125;</div><div class="line"></div><div class="line">	//收到信号，中断t2</div><div class="line">	t2.interrupt();</div><div class="line"></div><div class="line">&#125;</div></pre></td></tr></table></figure></p>
 <p>测试结果为：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div></pre></td><td class="code"><pre><div class="line">current threadThread-0 get Lock</div><div class="line">current threadThread-1 receive interrupt signal</div><div class="line">current threadThread-0 sleep interrupted</div><div class="line">current threadThread-0 release Lock</div><div class="line">current threadThread-1 get Lock</div><div class="line">current threadThread-1 will interrupt itself</div><div class="line">current threadThread-1 release Lock</div></pre></td></tr></table></figure></p>
 <p>由此如果调用者正确编码，unLock位于finally当中，当前线程中断自身后unlock依旧会被执行。</p>
 <p>疑问：结果中的第3行，为什么线程t1会收到中断信号？</p>
@@ -252,69 +252,6 @@
       
         <p class="article-more-link">
           <a class="article-more-a" href="/2017/09/02/锁的那些事之LockSupport/">展开全文 >></a>
-        </p>
-      
-
-      
-      <div class="clearfix"></div>
-    </div>
-  </div>
-</article>
-
-<aside class="wrap-side-operation">
-    <div class="mod-side-operation">
-        
-        <div class="jump-container" id="js-jump-container" style="display:none;">
-            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
-                <i class="icon-font icon-back"></i>
-            </a>
-            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
-                <i class="icon-font icon-plane jump-plane"></i>
-            </div>
-        </div>
-        
-        
-    </div>
-</aside>
-
-
-
-
-  
-    <article id="post-文章标题" class="article article-type-post  article-index" itemscope itemprop="blogPost">
-  <div class="article-inner">
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2017/08/16/文章标题/">文章标题</a>
-    </h1>
-  
-
-        
-        <a href="/2017/08/16/文章标题/" class="archive-article-date">
-  	<time datetime="2017-08-16T09:36:20.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2017-08-16</time>
-</a>
-        
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <p>你好，欢迎来到我的个人技术博客。</p>
-
-      
-
-      
-    </div>
-    <div class="article-info article-info-index">
-      
-      
-      
-
-      
-        <p class="article-more-link">
-          <a class="article-more-a" href="/2017/08/16/文章标题/">展开全文 >></a>
         </p>
       
 
