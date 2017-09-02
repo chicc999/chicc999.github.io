@@ -53,7 +53,7 @@
 		  <h1 class="header-author"><a href="/">陈大白</a></h1>
 		</hgroup>
 		
-		<p class="header-subtitle">Stay Hungry, Stay Foolish.</p>
+		<p class="header-subtitle">且将新火试新茶  诗酒趁年华</p>
 		
 
 		<nav class="header-menu">
@@ -115,7 +115,7 @@
 			  <h1 class="header-author js-header-author">陈大白</h1>
 			</hgroup>
 			
-			<p class="header-subtitle"><i class="icon icon-quo-left"></i>Stay Hungry, Stay Foolish.<i class="icon icon-quo-right"></i></p>
+			<p class="header-subtitle"><i class="icon icon-quo-left"></i>且将新火试新茶  诗酒趁年华<i class="icon icon-quo-right"></i></p>
 			
 			
 			
@@ -184,7 +184,19 @@
     
     <div class="article-entry" itemprop="articleBody">
       
-        
+        <p>LockSupport是用来创建锁和其他同步类的基本线程阻塞原语。</p>
+<h2 id="API说明"><a href="#API说明" class="headerlink" title="API说明"></a>API说明</h2><figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">public static void park()</div></pre></td></tr></table></figure>
+<p>为了线程调度，禁用当前线程，除非许可可用。<br>如果许可可用，则使用该许可，并且该调用立即返回；否则，为线程调度禁用当前线程，此线程将处于休眠状态，除非遇到下面三种情况之一：</p>
+<pre><code>* 其它线程调用unpark以此线程为目标
+* 其它线程中断此线程
+* 虚假唤醒
+</code></pre><figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">public static unpark(Thread thread)</div></pre></td></tr></table></figure>
+<p>向指定线程给予许可<br> <br> <br><br>这俩是LockSupport提供的核心方法，其余接口则是在这两种方法之上的变形。unpark函数为线程提供“许可(permit)”，线程调用park函数则等待“许可”。但是要注意以下2点：</p>
+<pre><code> * 这种“许可”是一次性的。比如线程B连续调用了三次unpark函数，当线程A调用park函数就使用掉这个“许可”，如果线程A再次调用park，则进入等待状态
+* unpark函数可以先于park调用
+</code></pre><h2 id="示例"><a href="#示例" class="headerlink" title="示例"></a>示例</h2><figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div><div class="line">28</div></pre></td><td class="code"><pre><div class="line">class FIFOMutex &#123;</div><div class="line">	private final AtomicBoolean locked = new AtomicBoolean(false);</div><div class="line">	private final Queue&lt;Thread&gt; waiters</div><div class="line">			= new ConcurrentLinkedQueue&lt;Thread&gt;();</div><div class="line"></div><div class="line">	public void lock() &#123;</div><div class="line">		boolean wasInterrupted = false;</div><div class="line">		Thread current = Thread.currentThread();</div><div class="line">		waiters.add(current);</div><div class="line"></div><div class="line">		// Block while not first in queue or cannot acquire lock</div><div class="line">		while (waiters.peek() != current ||</div><div class="line">				!locked.compareAndSet(false, true)) &#123;</div><div class="line">			LockSupport.park(this);</div><div class="line">			if (Thread.interrupted()) // ignore interrupts while waiting</div><div class="line">				wasInterrupted = true;</div><div class="line">		&#125;</div><div class="line"></div><div class="line">		waiters.remove();</div><div class="line">		if (wasInterrupted)          // reassert interrupt status on exit</div><div class="line">			current.interrupt();</div><div class="line">	&#125;</div><div class="line"></div><div class="line">	public void unlock() &#123;</div><div class="line">		locked.set(false);</div><div class="line">		LockSupport.unpark(waiters.peek());</div><div class="line">	&#125;</div><div class="line">&#125;</div></pre></td></tr></table></figure>
+<p>以上为LockSupport的官方示例，实现了一个先进先出 (FIFO) 非重入锁类的框架。</p>
+
       
 
       
