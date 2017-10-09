@@ -32,7 +32,7 @@ public static unpark(Thread thread)
 
 
 ## 示例  
-```  
+``` java
 class FIFOMutex {
 	private final AtomicBoolean locked = new AtomicBoolean(false);
 	private final Queue<Thread> waiters
@@ -77,7 +77,7 @@ class FIFOMutex {
 	* 唤醒队列头部的线程
 	
 在以上程序中，如果当前线程在获取锁过程中收到中断信号，是否依旧会执行unLock？写个测试程序如下：
-```  
+``` java  
 public static void main(String[] args) {
 	final FIFOMutex lock = new FIFOMutex();
 
