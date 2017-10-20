@@ -7,7 +7,9 @@ tags:
 categories: 编程
 comments: false
 ---
-LockSupport是用来创建锁和其他同步类的基本线程阻塞原语。
+
+*LockSupport是用来创建锁和其他同步类的基本线程阻塞原语。本文简略的实验了其用法。*
+<!--more-->
 
 ## API说明
 
