@@ -8,7 +8,7 @@ categories: 编程
 comments: true
 ---
 
-*消息队列一直是中间件中核心的一环，承担着应用解耦，削峰填谷等重任。目前市场上已经有很多成熟的系统珠玉在前，比如ActiveMQ，Kafka,RabbitMQ等。本文选取的比较对象为阿里的RocketMQ，旨在全方位对比京东金融使用的FMQ与其差异。y以下分析基于Apache RocketMQ 4.2.0，FMQ 2.1.5.*
+*消息队列一直是中间件中核心的一环，承担着应用解耦，削峰填谷等重任。目前市场上已经有很多成熟的系统珠玉在前，比如ActiveMQ，Kafka,RabbitMQ等。本文选取的比较对象为阿里的RocketMQ，旨在全方位对比京东金融使用的FMQ与其差异。以下分析基于Apache RocketMQ 4.2.0，FMQ 2.1.5。*
 <!--more-->
 
 # 1 底层架构分析
