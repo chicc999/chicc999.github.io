@@ -93,10 +93,33 @@ sweep_phase(){  for(i : 2..101)	$free_list[i] = NULL
 
 ### 3.2 BIBOP
 BiBOP核心是“将大小相近的对象整理成固定大小的块进行管理“。
-此方法原本是为了消除碎片化，提高堆使用效率而采用。但在多个块中分散残留着同样大小的对象，反而会降低堆使用效率。
+此方法原本是为了消除碎片化，提高堆使用效率而采用。但在多个块中分散残留着同样大小的对象，反而会降低堆使用效率。
 ### 3.3 位图标记法
 位图标记法通过标记的时候，不在对象的头里置位，而是在特定的位置设置标志位。
+
+![位图标记法](http://ovor60v7j.bkt.clouddn.com/blog/GC%E4%B9%8B%E6%A0%87%E8%AE%B0%E6%B8%85%E9%99%A4%E4%BD%8D%E5%9B%BE%E6%A0%87%E8%AE%B0.png)
+
+mark() 函数如代码如下：
+
+```
+mark(obj){obj_num = (obj - $heap_start) / WORD_LENGTHindex = obj_num / WORD_LENGTHoffset = obj_num % WORD_LENGTHif(($bitmap_tbl[index] & (1 << offset)) == 0)$bitmap_tbl[index] |= (1 << offset)for(child : children(obj))mark(*child)}
+```
+
+WORD_LENGTH代表一个字的位宽，每个字需要一个位来标记是否使用。obj_num表示从位图前面数起，obj的标志位在第几个。由于每个“字”可以存储WORD_LENGTH个“位“”，所以用obj_num 除以WORD_LENGTH 得到的商index 以及余数offset 来分别表示落在位图的哪个字，以及这个字的哪个位上。
+
 #### 与写时复制技术兼容
+
 位图标记在单独的区域而不是对象中，可以与写时复制技术兼容。
+
 #### 清除操作更高效
+
+位图标记的sweep_phase()函数如下：
+
+```
+sweep_phase(){sweeping = $heap_startindex = 0offset = 0while(sweeping < $heap_end){  if($bitmap_tbl[index] & (1 << offset) == 0){	sweeping.next = $free_list	$free_list = sweeping
+	}  index += (offset + sweeping.size) / WORD_LENGTH  offset = (offset + sweeping.size) % WORD_LENGTH  sweeping += sweeping.size}
+for(i : 0..(HEAP_SIZE / WORD_LENGTH - 1))$bitmap_tbl[i] = 0}
+```
+用sweeping 指针遍历整个堆
+
 ### 3.4 延迟清除法
