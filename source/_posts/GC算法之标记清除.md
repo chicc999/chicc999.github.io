@@ -120,6 +120,35 @@ sweep_phase(){sweeping = $heap_startindex = 0offset = 0while(sweeping < $hea
 	}  index += (offset + sweeping.size) / WORD_LENGTH  offset = (offset + sweeping.size) % WORD_LENGTH  sweeping += sweeping.size}
 for(i : 0..(HEAP_SIZE / WORD_LENGTH - 1))$bitmap_tbl[i] = 0}
 ```
-用sweeping 指针遍历整个堆
+用sweeping 指针遍历整个堆，如果对应的位图没有被标记，则加入空闲列表。最后将整个位图清零。
+
+注意，在堆有多个，对象地址不连续的情况下，我们无法用单纯的位运算求出标志位的位置。因此，在堆为多个的情况下，一般会为每个堆都准备一个位图表格。
 
 ### 3.4 延迟清除法
+
+延迟清除法在标记操作结束后，不一并进行清除操作，而是延迟清除。从而缩减因清除操作而导致的应用最大暂停时间。
+
+#### 3.4.1 new_obj() 函数
+延迟清除法中的new_obj() 函数的定义如下：
+
+```
+new_obj(size){chunk = lazy_sweep(size)if(chunk != NULL)return chunkmark_phase()chunk = lazy_sweep(size)if(chunk != NULL)return chunkallocation_fail()}
+```
+在分配时直接调用lazy_sweep() 函数，进行清除操作。如果它能用清除操作来分配分块，就会返回分块；如果不能分配分块，就会执行标记操作。当lazy_sweep() 函数返回NULL时，也就是没有找到分块时，会调用mark_phase() 函数进行一遍标记操作，再调用lazy_sweep() 函数来分配分块。在这里没能分配分块也就意味着堆上没有分块，分配失败。
+
+#### 3.4.2 lazy_sweep() 函数
+
+```
+lazy_sweep(size){  while($sweeping < $heap_end){	if($sweeping.mark == TRUE){	  $sweeping.mark = FALSE
+	  }	else if($sweeping.size >= size){	  chunk = $sweeping	  $sweeping += $sweeping.size	  return chunk	  }	$sweeping += $sweeping.size	}	$sweeping = $heap_start	return NULL}
+```
+lazy_sweep() 函数会一直遍历堆，直到找到大于等于所申请大小的分块为止。如果分块已经被标记，说明不能使用，清空标志位等待下一轮标记。如果没有被标记且符合所需要的大小，则直接返回使用。
+注意：
+
+* $sweeping 变量是全局变量。也就是说，遍历的开始位置位于上一次清除操作中发现的分块的右边。
+* 当lazy_sweep() 函数遍历到堆最后都没有找到分块时，会返回NULL。
+延迟清除法不是一下遍历整个堆，它只在分配时执行必要的遍历，所以可以压缩因清除操作而导致的应用的暂停时间。
+#### 延迟清除法的问题
+![垃圾分布不均匀](http://ovor60v7j.bkt.clouddn.com/%E5%9E%83%E5%9C%BE%E5%88%86%E5%B8%83%E4%B8%8D%E5%9D%87%E5%8C%80.png)
+程序在清除垃圾较多的部分时能马上获得分块，所以能减少应用的暂停时间。然而一旦程序开始清除活动对象周围，就怎么也无法获得分块了，这样就增加了应用的暂停时间。导致某些分配特别慢。
+
