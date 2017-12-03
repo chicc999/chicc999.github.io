@@ -57,18 +57,20 @@ sweep_phase(){	sweeping = $heap_start;	while(sweeping < $heap_end){		if(sweep
 				sweeping.next = $free_list;				$free_list = sweeping;
             }		sweeping += sweeping.size;	}}```
 ## 2 优缺点
-### 优点
-	* 实现简单
-	* 与保守式GC算法（对象不能被移动)兼容
-### 缺点
+### 2.1 优点
 
-#### 碎片化 
+* 实现简单
+* 与保守式GC算法（对象不能被移动)兼容
+
+### 2.2 缺点
+
+#### 2.2.1 碎片化 
 由分配算法可知标记-清除法或多或少会发生碎片化。如果发生碎片化，那么即使堆中分块的总大小够用，也会因为一个个的分块都太小而不能执行分配。
 	
-#### 分配速度
+#### 2.2.2 分配速度
 GC标记- 清除算法中分块不是连续的，因此每次分配都必须遍历空闲链表，找到足够大的分块。最糟的情况就是每次进行分配都得把空闲链表遍历到最后。
 
-#### 与copy-on-write不兼容
+#### 2.2.3 与copy-on-write不兼容
 写时复制技术的优势在于，fork进程的时候，内存空间是引用而不是复制。这样fork后的两个进程的内存指向的是同一片区域，在进程执行不同的操作时，才在其他空闲内存区域写入一个新的对象并改写原指针。如果两个程序的大部分内存数据都是相同的，那么这个技术能省下非常多的内存空间。
 而标记清除算法每次gc，都会修改对象头部的标志位。“copy-on-write”会判断对象已经被改动，从空闲内存中写入新的对象并改写原指针，相当于每一个对象都被复制了一遍。
 
@@ -120,6 +122,7 @@ sweep_phase(){sweeping = $heap_startindex = 0offset = 0while(sweeping < $hea
 	}  index += (offset + sweeping.size) / WORD_LENGTH  offset = (offset + sweeping.size) % WORD_LENGTH  sweeping += sweeping.size}
 for(i : 0..(HEAP_SIZE / WORD_LENGTH - 1))$bitmap_tbl[i] = 0}
 ```
+
 用sweeping 指针遍历整个堆，如果对应的位图没有被标记，则加入空闲列表。最后将整个位图清零。
 
 注意，在堆有多个，对象地址不连续的情况下，我们无法用单纯的位运算求出标志位的位置。因此，在堆为多个的情况下，一般会为每个堆都准备一个位图表格。
@@ -134,6 +137,7 @@ sweep_phase(){sweeping = $heap_startindex = 0offset = 0while(sweeping < $hea
 ```
 new_obj(size){chunk = lazy_sweep(size)if(chunk != NULL)return chunkmark_phase()chunk = lazy_sweep(size)if(chunk != NULL)return chunkallocation_fail()}
 ```
+
 在分配时直接调用lazy_sweep() 函数，进行清除操作。如果它能用清除操作来分配分块，就会返回分块；如果不能分配分块，就会执行标记操作。当lazy_sweep() 函数返回NULL时，也就是没有找到分块时，会调用mark_phase() 函数进行一遍标记操作，再调用lazy_sweep() 函数来分配分块。在这里没能分配分块也就意味着堆上没有分块，分配失败。
 
 #### 3.4.2 lazy_sweep() 函数
@@ -142,10 +146,12 @@ new_obj(size){chunk = lazy_sweep(size)if(chunk != NULL)return chunkmark_phas
 lazy_sweep(size){  while($sweeping < $heap_end){	if($sweeping.mark == TRUE){	  $sweeping.mark = FALSE
 	  }	else if($sweeping.size >= size){	  chunk = $sweeping	  $sweeping += $sweeping.size	  return chunk	  }	$sweeping += $sweeping.size	}	$sweeping = $heap_start	return NULL}
 ```
+
 lazy_sweep() 函数会一直遍历堆，直到找到大于等于所申请大小的分块为止。如果分块已经被标记，说明不能使用，清空标志位等待下一轮标记。如果没有被标记且符合所需要的大小，则直接返回使用。
+
 注意：
 
-* $sweeping 变量是全局变量。也就是说，遍历的开始位置位于上一次清除操作中发现的分块的右边。
+* $sweeping 变量是全局变量。也就是说，遍历的开始位置位于上一次清除操作中发现的分块的右边。
 * 当lazy_sweep() 函数遍历到堆最后都没有找到分块时，会返回NULL。
 延迟清除法不是一下遍历整个堆，它只在分配时执行必要的遍历，所以可以压缩因清除操作而导致的应用的暂停时间。
 #### 延迟清除法的问题
