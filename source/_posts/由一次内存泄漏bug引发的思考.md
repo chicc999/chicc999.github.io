@@ -1,13 +1,13 @@
 ---
 title: 由一次内存泄漏bug引发的思考
-date: 2018-01-25 16:42:12
+date: 2017-01-25 16:42:12
 tags:
 - java
 - JVM
 categories: 编程
 comments: false
 ---
-由一次内存泄漏引发的思考。
+由一次堆外内存泄漏引发的思考，为什么在JVM可以回收内存的情况下，还要主动进行堆外内存回收？
 <!--more-->
 
 # 问题描述
@@ -29,7 +29,7 @@ comments: false
 JDK中使用DirectByteBuffer对象来表示堆外内存。
 每个DirectByteBuffer对象在初始化时，都会调用unsafe.allocateMemory分配一段堆外内存，然后用返回的内存地址创建一个对应的Cleaner对象。如以下代码所示。
 
-```
+```java
 long base = 0;
 try {
 	base = unsafe.allocateMemory(size);
@@ -61,8 +61,7 @@ Cleaner对象的clean方法主要有两个作用：
 * 把自身从Clener链表删除，从而在下次GC时能够被回收
 * 执行unsafe.freeMemory(address)，回收这块堆外内存。
 
-如果该DirectByteBuffer对象在一次GC中被回收了
-Cleaner对象会在合适的时候执行unsafe.freeMemory(address)，从而回收这块堆外内存。
+如果该DirectByteBuffer对象在一次GC中被回收了，Cleaner对象会在合适的时候执行unsafe.freeMemory(address)，从而回收这块堆外内存。
 由以上分析可知，小文件上传时，在触发FGC的情况下，泄漏的内存最终是能被回收的
 
 ### 虚拟机宕机原因
