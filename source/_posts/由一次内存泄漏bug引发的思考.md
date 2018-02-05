@@ -44,13 +44,42 @@ try {
     } else {
         address = base;
     }
+    cleaner = Cleaner.create(this, new Deallocator(base, size, cap));
+    att = null;
 ```
 创建完成以后，对象的引用关系如下：
 ![申请堆外内存完毕](http://ovor60v7j.bkt.clouddn.com/%E7%94%B3%E8%AF%B7%E5%A0%86%E5%A4%96%E5%86%85%E5%AD%98.png)
 
-first是Cleaner类的静态变量，相当于Clener链表的根指针。Cleaner对象在初始化时会被添加到Clener链表中。
+```java
+public class Cleaner extends PhantomReference<Object> {
+    private static final ReferenceQueue<Object> dummyQueue = new ReferenceQueue();
+    private static Cleaner first = null;
+    private Cleaner next = null;
+    private Cleaner prev = null;
+    private final Runnable thunk;
+    ……
+    }
+```
+Cleaner的构造中可以看出有个类的静态变量first，相当于Clener链表的根指针。有个静态的ReferenceQueue，被所有的cleaner实例共享。
+
+Cleaner对象在初始化时会被添加到Clener链表中。
+注意倒数第二行，创建了一个Cleaner对象并且注册了回调。来看下回调函数，这是一个Runnable对象。
+
+```java
+        public void run() {
+            if (address == 0) {
+                // Paranoia
+                return;
+            }
+            unsafe.freeMemory(address);
+            address = 0;
+            Bits.unreserveMemory(size, capacity);
+        }
+```
+可以看到回调的实现就是在释放堆外内存。那什么时候这段代码被执行呢？
 
 ### 堆外内存的释放
+
 
 如果该DirectByteBuffer对象在一次GC中被回收了，在下一次FGC时，Cleaner对象被放入到ReferenceQueue中，并触发clean方法。如下图所示：
 
