@@ -57,13 +57,11 @@ public class Cleaner extends PhantomReference<Object> {
     private Cleaner next = null;
     private Cleaner prev = null;
     private final Runnable thunk;
-    ……
+    … …
     }
 ```
-Cleaner的构造中可以看出有个类的静态变量first，相当于Clener链表的根指针。有个静态的ReferenceQueue，被所有的cleaner实例共享。
-
-Cleaner对象在初始化时会被添加到Clener链表中。
-注意倒数第二行，创建了一个Cleaner对象并且注册了回调。来看下回调函数，这是一个Runnable对象。
+Cleaner的构造中可以看出有个类的静态变量first，相当于Clener链表的根指针。有个静态的ReferenceQueue，被所有的cleaner实例共享。Cleaner对象在初始化时会被添加到Clener链表中。
+注意DirectByteBuffer构造函数的倒数第二行，创建了一个Cleaner对象并且注册了回调，同时传入了this指针。来看下回调函数，这是一个Runnable对象。
 
 ```java
         public void run() {
@@ -80,17 +78,84 @@ Cleaner对象在初始化时会被添加到Clener链表中。
 
 ### 堆外内存的释放
 
-
-如果该DirectByteBuffer对象在一次GC中被回收了，在下一次FGC时，Cleaner对象被放入到ReferenceQueue中，并触发clean方法。如下图所示：
+如果该DirectByteBuffer对象在一次GC中被回收了，Cleaner失去了强引用。如下图所示：
 
 ![申请堆外内存完毕](http://ovor60v7j.bkt.clouddn.com/%E5%9B%9E%E6%94%B6%E5%A0%86%E5%A4%96%E5%86%85%E5%AD%98.png)
 
+于是在下一次FGC时，Cleaner对象被垃圾回收器放入到pending链表中。
+在Reference中起了一个守护线程，一直在执行tryHandlePending，以下为实现
+
+```java
+ static boolean tryHandlePending(boolean waitForNotify) {
+        Reference<Object> r;
+        Cleaner c;
+        try {
+            synchronized (lock) {
+                if (pending != null) {
+                    r = pending;
+                    // 'instanceof' might throw OutOfMemoryError sometimes
+                    // so do this before un-linking 'r' from the 'pending' chain...
+                    c = r instanceof Cleaner ? (Cleaner) r : null;
+                    // unlink 'r' from 'pending' chain
+                    pending = r.discovered;
+                    r.discovered = null;
+                } else {
+                    // The waiting on the lock may cause an OutOfMemoryError
+                    // because it may try to allocate exception objects.
+                    if (waitForNotify) {
+                        lock.wait();
+                    }
+                    // retry if waited
+                    return waitForNotify;
+                }
+            }
+        } catch (OutOfMemoryError x) {
+            // Give other threads CPU time so they hopefully drop some live references
+            // and GC reclaims some space.
+            // Also prevent CPU intensive spinning in case 'r instanceof Cleaner' above
+            // persistently throws OOME for some time...
+            Thread.yield();
+            // retry
+            return true;
+        } catch (InterruptedException x) {
+            // retry
+            return true;
+        }
+
+        // Fast path for cleaners
+        if (c != null) {
+            c.clean();
+            return true;
+        }
+
+        ReferenceQueue<? super Object> q = r.queue;
+        if (q != ReferenceQueue.NULL) q.enqueue(r);
+        return true;
+    }
+```
+这个方法一个做了三件事情：
+
+* 更改指针，将pending链表的头指针指向下一个
+* 如果引用对象是cleaner类型，执行clean方法
+* 如果非cleaner对象且自己带有ReferenceQueue，则把对象加入ReferenceQueue
+
+再来看Cleaner的clean方法
+
+```
+    public void clean() {
+        if(remove(this)) {
+            try {
+                this.thunk.run();
+            } catch (final Throwable var2) {
+            … …
+        }
+    }
+```
 Cleaner对象的clean方法主要有两个作用：
 
-* 把自身从Clener链表删除，从而在下次GC时能够被回收
-* 执行unsafe.freeMemory(address)，回收这块堆外内存。
+* Cleaner对象的实例先将自己从静态的链表里去除（即断开和静态变量first的连接）
+* 执行thunk的run方法。thunk就是在创建Cleaner对象时传入的回调，在DirectByteBuffer中的实现就是执行unsafe.freeMemory(address)，回收这块堆外内存。
 
-如果该DirectByteBuffer对象在一次GC中被回收了，Cleaner对象会在合适的时候执行unsafe.freeMemory(address)，从而回收这块堆外内存。
 由以上分析可知，小文件上传时，在触发FGC的情况下，泄漏的内存最终是能被回收的
 
 ### 虚拟机宕机原因
