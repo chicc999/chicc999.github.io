@@ -90,9 +90,10 @@ registry在通过zk进行选举，当自身所在机器成为master以后，即�
 
 TaskService是具体执行任务的执行器，其会根据数据库配置的任务类型，去找寻对应的ServicePlugin的实现。采用了SPI模式对任务进行扩展，即为接口寻找具体服务的实现类。
 
->
-当服务的提供者，提供了服务接口的一种实现之后，在jar包的META-INF/services/目录里同时创建一个以服务接口命名的文件。该文件里就是实现该服务接口的具体实现类。而当外部程序装配这个模块的时候，就能通过该jar包META-INF/services/里的配置文件找到具体的实现类名，并装载实例化，完成模块的注入。
-> 
+
+>SPI使用：当服务的提供者，提供了服务接口的一种实现之后，在jar包的META-INF/services/目录里同时创建一个以服务接口命名的文件。该文件里就是实现该服务接口的具体实现类。而当外部程序装配这个模块的时候，就能通过该jar包META-INF/services/里的配置文件找到具体的实现类名，并装载实例化，完成模块的注入。
+
+ 
 
 ![类结构](http://ovor60v7j.bkt.clouddn.com/%E7%B1%BB%E7%BB%93%E6%9E%84.png)
 
@@ -118,7 +119,7 @@ Service提供了某种功能的接口。在分布式调度平台上，为顶层�
 
 Service Loader负责发现和加载classpath中所有的Service实现。
 
-```
+```java
 ServiceLoader<T> loader = ServiceLoader.load(clazz,clazz.getClassLoader());
         for (T plugin : loader) {
             plugins.add(plugin);

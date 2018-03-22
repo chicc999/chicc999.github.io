@@ -27,6 +27,24 @@ URL = http://host:port/version/Method
 * ack
 * retry 
 
+version部分目前为1.0版本，所有方法均走post请求，content部分为所需信息的json字符串。
+
+| method | 描述       | header字段 |content字段|response字段
+|:----------:|:-------------:|:------|:-----:|:-----:|
+| auth |   用来进行服务认证  | | user</br>password</br>topic</br>app| status {code}</br>result {authid,servers}|
+| produce |   生产消息    |    authid |topic</br>app</br>messages|status {code}|
+| consume| 获取消息|    authid | topic</br>app | status {code}|
+| ack |    消费成功确认   |   authid | |
+| retry  | 消费失败确认      | authid | |
+
+
+### 2.1.1 auth
+
+auth方法主要用来进行服务认证。
+
+
+
+
 
 ## 3 模块分析
 ### 3.1 验证模块
@@ -50,3 +68,14 @@ URL = http://host:port/version/Method
 ### 3.3 ProxyConsumerManager模块
 * 根据topic,app唯一确定ConsumerTrace，独享TransportManager ***存在问题，MessageConsumer本身支持多个topic***
 * 其余逻辑类似producer
+
+
+## 问题
+
+1. 返回servers靠配置，如何进行负载均衡
+	* auth用域名访问vip，后端挂所有proxy，验证完毕缓存共享auth信息
+	* 返回所有proxy,固定访问某台/访问域名/自定义策略由用户自己决定
+	
+2. 机器资源不足
+	* 虚拟机
+	* 储备机器
