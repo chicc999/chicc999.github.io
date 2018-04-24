@@ -22,9 +22,23 @@ comments: true
 
 ## 1.3 解决方案
 
-一般分布式事务的解决方案主要采用X/Open DTP模型，此方案主要问题是协议和实现都比较复杂，且效率较低。
-eBay提供了一个分布式系统一致性问题的解决方案。它的核心思想是将分布式事务变成 本地事务+异步事件通知。将需要分布式处理的任务通过消息队列来异步执行。
+所有的方案基本都是2PC的变型与增强，先了解下2PC的工程实践。[两阶段提交的工程实践](https://zhuanlan.zhihu.com/p/22594180)。
 
+### 1.3.1 X/Open DTP模型
+
+此方案主要问题是协议和实现都比较复杂，且效率较低，不适合高并发场景。
+
+### 1.3.2 eBay 事件队列方案——最终一致性  
+
+* 将分布式事务变成 本地事务+异步事件通知。将需要分布式处理的任务通过消息队列来异步执行。
+* 消息生产方，需要额外建一个消息表，并记录消息发送状态。消息表和业务数据要在一个事务里提交，然后消息发送给MQ。如果消息发送失败，会进行重试发送。
+* 消费者消费消息并完成自己的业务逻辑。此时如果本地事务处理成功，表明已经处理成功了，如果处理失败，那么就会重试执行。
+* 缺点是有些不适合异步执行的任务（有可能业务层面失败），需要给生产方发送一个业务补偿消息，否则不适合此方案。
+
+
+### 1.3.3 TCC
+
+//TODO
 
 # 2 基于消息的分布式事务
 
@@ -56,18 +70,18 @@ eBay提供了一个分布式系统一致性问题的解决方案。它的核心�
 
 ### 3.1 交互流程
 
-![分布式事务](https://docs-aliyun.cn-hangzhou.oss.aliyun-inc.com/cn/ons/0.1.06/assets/pic/sdk/mq_trans.png)
+![分布式事务](http://ovor60v7j.bkt.clouddn.com/feedback.png)
 
 
 事务消息交互流程如下：
 
-1. 发送方向 MQ 服务端发送消息；
-2. MQ Server 将消息持久化成功之后，向发送方 ACK 确认消息已经发送成功，此时消息为半消息。
-3. 发送方开始执行本地事务逻辑。
-4. 发送方根据本地事务执行结果向 MQ Server 提交二次确认（Commit 或是 Rollback），MQ Server 收到 Commit 状态则将半消息标记为可投递，订阅方最终将收到该消息；MQ Server 收到 Rollback 状态则删除半消息，订阅方将不会接受该消息。
-5. 在断网或者是应用重启的特殊情况下，上述步骤4提交的二次确认最终未到达 MQ Server，经过固定时间后 MQ Server 将对该消息发起消息回查。
-6. 发送方收到消息回查后，需要检查对应消息的本地事务执行的最终结果。
-7. 发送方根据检查得到的本地事务的最终状态再次提交二次确认，MQ Server 仍按照步骤4对半消息进行操作。
+1. 生产者向broker发送消息；
+2. broker将消息以及prepare命令持久化成功之后，向发送方 ACK 确认消息已经发送成功。
+3. 生产者开始执行本地事务逻辑。
+4. 生产者根据本地事务执行结果向broker 发送Commit 或是 Rollback，broker收到 Commit 则为消息建立索引，消费者最终消费；broker收到 Rollback 状态则结束事务，消费者将不会接受该消息。
+5. 在断网或者是应用重启的特殊情况下，Commit 或是 Rollback未达到broker或者未能写盘成功，经过固定时间后 broker 将对该消息发起消息回查。
+6. 生产者收到消息回查后，需要检查对应消息的本地事务执行的最终结果。
+7. 生产者根据检查得到的本地事务的最终状态后再次提交Commit 或是 Rollback。
 
 其中1-4属于正常流程，而5-7属于异常情况下的回查机制（后文称为Feedback机制）。
 
@@ -160,12 +174,16 @@ public interface TxStatusQuerier {
 
 存储的消息总共分为以下几种类型
 
-* MESSAGE 非事务消息
-* PREPARE 命令字，无实际消息内容
-* PRE_MESSAGE prepare阶段预存的消息，保存消息体
-* REF_MESSAGE 指向PRE_MESSAGE的指针，无实际消息内容。
-* COMMIT 命令字，无实际消息内容
-* ROLLBACK 命令字，无实际消息内容
+
+| 消息类型    | 描述       |
+|:----------:|:-------------:|
+|MESSAGE|非事务消息|
+|PREPARE|命令字，无实际消息内容|
+|PRE_MESSAGE|prepare阶段预存的消息，保存消息体|
+|REF_MESSAGE|指向PRE_MESSAGE的指针，无实际消息内容|
+|TX_Message|REF_MESSAGE复制body以后刷盘的消息|
+|COMMIT|命令字，无实际消息内容|
+|ROLLBACK|命令字，无实际消息内容|
 
 
 ### 3.3.2 Prepare
@@ -210,6 +228,21 @@ public interface TxStatusQuerier {
 
 
 ### 3.3.5 Feedback
+
+#### 3.3.5.1 client
+
+* 每个app+topic唯一对应一个TopicFeedback
+* TopicFeedback里保存map<BrokerGroup,GroupFeedback>
+* GroupFeedback
+	* 独立线程，按照100ms间隔不断向服务端发TxFeedback命令（5s超时）。如果更新成功，则变更TxFeedback状态。
+	* 如果feedback带事务ID，根据状态进行commit或者rollback。
+	* 锁定并获取未提交的事务返回给客户端
+	* 没有锁定的事务则挂起（长轮询）
+	
+#### 3.3.5.2 broker
+
+* 对应的key(topic+producer)如果有未完成事务，返回事务ID，查询对应状态。
+* 没有未完成事务，对请求进行长轮询管理。
 
 ### 3.3.6 Recovery
 
@@ -297,35 +330,35 @@ public interface TxStatusQuerier {
 * roolback flush后宕机，redo恢复，不需要回查
 
 
+## 3.4 工程实现细节
 
-## Feedback
+#### 宕机了如何维护内存的事务管理器
 
-### client
+* 日志进行重放
 
-#### TopicFeedback
+#### refMessage作用
 
-* 每个app+topic唯一对应一个TopicFeedback
-* TopicFeedback里保存map<BrokerGroup,GroupFeedback>
-* GroupFeedback
-	* 独立线程，按照100ms间隔不断向服务端发TxFeedback命令（5s超时）。如果更新成功，则变更TxFeedback状态。
-	* 如果feedback带事务ID，根据状态进行commit或者rollback。
-	* 锁定并获取未提交的事务返回给客户端
-	* 没有锁定的事务则挂起（长轮询）
+* 事务消息支持单个事务多条消息，refMessage实际上是起到了索引的作用
 
+#### refMessage为什么要刷盘以及和原消息不在一个文件时复制内容
 
-## 疑问
+* 磁盘清理按照文件为维度删除
+* 没有建立索引的消息可能被删除，重新复制消息可以防止原消息已经被清理
 
-* 宕机了如何维护内存的prepare
-* 由于prepare阶段没有建立索引，如果2天还没有commit，原始文件被删除了怎么办
-* 宕机了如果恢复事务管理器
-* 是否支持消息回溯
-* refMessage作用？
-* refMessage为什么要刷盘
-* refMessage刷盘时如果和preMessage一个文件，为什么要复制一份内容
-* 为什么prepare跟preMessage要分开刷盘
-* commit阶段先持久化ref再持久化commit命令字？
+#### commit阶段先持久化refMessage还是先持久化commit命令字
 
-## RocketMQ问题
+* 先持久化refMessage，再持久化commit。否则存在多条refMessage时，如果宕机恢复，不知道是否需要回查
+
+####  由于prepare阶段没有建立索引，如果2天还没有commit，原始文件被删除了怎么办
+
+* 清理逻辑加上比较ack的最小值与checkPoint记录的recoveryOffset。这样未被完成的事务不会被删除。（这样是否还有必要复制消息内容到refMessage?）
+
+#### 是否支持消息回溯
+
+* 逻辑上消息回溯只涉及索引表，不涉及日志修改。
+
+## 4 RocketMQ实现
 
 * table & redo log是否同步刷盘，对于效率的影响
 * 修改commit log导致脏页的问题
+//TODO
