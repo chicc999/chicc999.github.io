@@ -1,5 +1,5 @@
 ---
-title: 线程中断机制浅析
+title: JDK源码剖析之线程
 date: 2017-01-11 15:51:44
 tags:
 - java
@@ -7,12 +7,23 @@ tags:
 categories: 编程
 comments: false
 ---
-浅析线程interrupt的用法以及适用场景。
+通过分析JDK线程的源码，了解线程及其中断的用法，以及适用场景。
 <!--more-->
+# 1 构造
 
-# API
+```
+public Thread(ThreadGroup group, Runnable target, String name,
+                  long stackSize) 
+```
 
-### interrupt
+
+# 2 启动
+
+# 3 中断
+
+## 3.1 API
+
+### 3.1.1 interrupt
 
 ```
 public void interrupt()
@@ -23,14 +34,14 @@ public void interrupt()
 * 如果线程阻塞在Selector上则中断状态位被置为true并且立即返回。
 
 
-### isInterrupted
+### 3.1.2 isInterrupted
 
 ```
  public boolean isInterrupted()
 ```
 返回线程的中断标志位
 
-### interrupted
+### 3.1.3 interrupted
 
 ```
 public static boolean interrupted()
@@ -38,7 +49,7 @@ public static boolean interrupted()
 返回当前线程的中断标志位，并且将标志位进行重置（设置为false）
 注意这是一个静态方法，只能设置当前线程
 
-# 为什么要用interrupt
+# 3.2 为什么要用interrupt
 线程的stop被设置为不建议使用的方法。
 一个线程的运行不应该被另一个线程去中止，stop方法在被调用的时候会释放所有的锁，从而导致对象处于不一致的状态。举个例子,在多线程下有两个方法doSomething和getMeasurement
 
@@ -58,7 +69,7 @@ public synchronized AverageAndCount getMeasurement()
 
 而interrupt() 并不能真正的中断线程，它仅仅给线程设置一个标志告诉线程应该结束了，最终到底中断还是继续运行，应该由被通知的线程自己处理。
 
-# interrupt用法
+# 3.3 interrupt用法
 
 从api的注释来看，调用interrupt后，根据此时被调用线程的状态，主要有两种结果：
 
