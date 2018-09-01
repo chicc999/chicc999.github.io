@@ -55,23 +55,117 @@ electTransport方法的返回值是选择的broker对应的transport，electQueu
 
 ### 1.1.2 轮盘赌（Roulette）算法
 
-借鉴遗传算法中选择下一代的策略，我们实现了根据权重来选择broker的轮盘赌算法。假设一个topic分配了N个broker分组，分组i 的权重为𝒘(𝒙_{_𝒊}),则此producer选择分组i的概率为
+FMQ客户端中的默认实现，借鉴遗传算法中按照概率选择下一代的轮盘赌策略，来选择broker。假设一个topic分配了N个broker分组，分组i的权重为𝒘(𝒙<sub>𝒊</sub>),则此producer选择分组i的概率为
 
-x^2
+![轮盘赌](http://ovor60v7j.bkt.clouddn.com/blog/FMQ%E4%B9%8B%E5%AE%A2%E6%88%B7%E7%AB%AF%E8%A1%80%E6%B3%AA%E5%8D%87%E7%BA%A7%E5%8F%B2/%E6%9D%83%E9%87%8D%E5%85%AC%E5%BC%8F.png)
+
+由此我们只需要控制broker的权重，即可以控制消息的路由策略。
 
 ### 1.1.3 影响权重的因素
+
+* 手工设定权重，此为最高优先级。
+* 网络连接状态，即如果网络断开或者异常，则将权重置为0，不再向次broker生产消息
+* 同机房就近发送，默认不开启。如果开启就近发送，则当本地机房有机器能正常提供服务时，优先路由给本地机器。
+* 根据延迟、响应时间等参数指标自定义策略。
 
 
 ### 1.1.4 故障切换
 
+### 1.1.4.1 写操作
+
+* 如果网络出现故障或者对端宕机，则此tcp的异常会被应用层感知，连接权重被置为0，写操作自动路由到其它broker。
+* 如果broker不能再处理写操作（例如密码校验错误，磁盘满，线程死锁等情况），连续的错误或者超时触发健康检查，在此期间连接权重被置为0，流量自动切换到其它机器。
+
+### 1.1.4.2 读操作
+
+* 默认读操作在master上，如果从宕机不影响客户端读操作。
+* 如果master宕机，自动切换到 [从消费](https://chicc999.github.io/2018/05/21/FMQ-%E4%BB%8E%E8%8A%82%E7%82%B9%E6%B6%88%E8%B4%B9%E8%AE%BE%E8%AE%A1/) 模式。
+
+
 ## 1.2 重试
+
+在某一次请求中，如果出现异常，按照1.1的设计，后续请求会被自动路由到正常工作的broker上。但是还存在问题：从网络或者对端出问题，到应用层发现问题并修改权重存在时间窗口，在此窗口内会大量失败。  为了解决这个问题，我们引入了重试机制。
+
+* 用户发送消息时会指定一个超时（不指定会有默认超时），当消息发送失败且超时时间未到时，会自动进行重试。
+* 重试时会自动排除此次请求已经发送过但是失败的broker。
+
+由此，客户端终止重试的条件如下（满足任意一个即终止）：
+
+* 达到客户端最大重试次数
+* 单次请求指定最大耗时时间达到
+* 所有broker均发送失败，没有可以重试的broker
+* 生产成功
 
 # 2 超时？超时！
 
+在做了1.2中的重试后，已经很好的解决了自动容灾的问题。但是在生产环境中，却经常报请求超时，这与我们的设计不符（单次请求平均耗时不到1ms，超时5s够重试5000多次）。
+
 ## 2.1 原因分析
+
+通过日志发现，网络抖动或者机器异常宕机时，如果请求已经被服务端所接收，则不会再返回响应。于是此次请求就会一直等到设置的超时时间到了才会返回或者执行回调。由于时间耗尽，重试机制也不会起作用。同时因为生产环境并发量比较大，在宕机一瞬间有大量请求，这些请求就都会失败。
 
 ## 2.2 解决方案
 
+此问题的本质是，对于已经接收的请求，由于宕机等原因，对端无法再给出响应。导致客户端不得不一直等待到超时，同时超时又导致了重试机制不生效。那能不能在对端宕机时，得到快速的失败呢？设计如下类，将request和发送的channel进行绑定
+
+```
+public class ResponseFutureUtil {
+	private static final AttributeKey<ConcurrentSet<Integer>> REQUEST_ID = AttributeKey
+			.valueOf("requestIDSet");
+
+	public static void attributeRequestID(Channel channel,Integer requestID){
+		ConcurrentSet<Integer> requestIDSet = channel.attr(REQUEST_ID).get();
+		if(requestIDSet == null){
+			//对channel加锁，不同channel可以并行操作
+			synchronized(channel){
+				//再次检查set是否存在
+				requestIDSet = channel.attr(REQUEST_ID).get();
+				if(requestIDSet == null){
+					requestIDSet = new ConcurrentSet<Integer>();
+					channel.attr(REQUEST_ID).set(requestIDSet);
+				}
+			}
+		}
+		requestIDSet.add(requestID);
+	}
+
+	public static ConcurrentSet<Integer> getAttributeRequestID(Channel channel){
+			return channel.attr(REQUEST_ID).get();
+	}
+
+	public static boolean removeAttributeRequestID(Channel channel,Integer requestID){
+		ConcurrentSet<Integer> requestIDSet = getAttributeRequestID(channel);
+		if(requestIDSet == null){
+			return false;
+		}
+		return requestIDSet.remove(requestID);
+	}
+
+	public static void clearRequestByCause(ConcurrentHashMap<Integer, ResponsePromise> futures,Channel channel,Throwable cause){
+		ConcurrentSet<Integer> requestIDSet = channel.attr(REQUEST_ID).get();
+
+		if(requestIDSet == null){
+			return;
+		}
+
+		for(Integer i : requestIDSet){
+			ResponsePromise response = futures.remove(i);
+			if(response == null){
+				continue;
+			}
+
+			response.setResponse(null);
+			response.onFailed(cause);
+			response.release(cause, true);
+
+			requestIDSet.remove(i);
+		}
+	}
+
+}
+```
+
+在每次发送时将future绑定到写出此请求的channel里，如果正常返回则将其remove。如果发生网络闪断或者对端宕机，则应用层感知到异常以后，调用clearRequestByCause对出问题的连接所绑定的请求进行释放，从而使得调用客户端的线程立即得到感知，这样如果时间有所空余，就可以进行重试操作。
 
 # 3 翻车了？再升级
 
