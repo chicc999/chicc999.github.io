@@ -27,6 +27,6 @@ comments: true
 
 日志文件分为header和body两部分，固定总大小为128M。其中头部组成如下图。
 
-![日志文件结构](http://ovor60v7j.bkt.clouddn.com/blog/FMQ%E4%B9%8B%E6%B6%88%E6%81%AF%E5%AD%98%E5%82%A8/%E6%97%A5%E5%BF%97%E6%96%87%E4%BB%B6.png)
+![日志文件结构](http://cyblog.oss-cn-hangzhou.aliyuncs.com/FMQ%E4%B9%8B%E6%B6%88%E6%81%AF%E5%AD%98%E5%82%A8/%E6%97%A5%E5%BF%97%E6%96%87%E4%BB%B6%E7%BB%93%E6%9E%84.png)
 
 # 4 其他工程优化

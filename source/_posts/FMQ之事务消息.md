@@ -58,7 +58,7 @@ comments: true
 
 另一个方案就是采取自身支持事务消息的MQ。事务消息的基本思路如下图所示。
 
-![分布式事务](http://ovor60v7j.bkt.clouddn.com/%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1.png)
+![分布式事务](http://cyblog.oss-cn-hangzhou.aliyuncs.com/FMQ%E4%B9%8B%E4%BA%8B%E5%8A%A1%E6%B6%88%E6%81%AF/%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1.png)
 
 显然，这个方案和2.1中的方案原理上并没有太大区别，只是把需要业务自己做的轮询变成了服务端的回查。
 
@@ -70,7 +70,7 @@ comments: true
 
 ### 3.1 交互流程
 
-![分布式事务](http://ovor60v7j.bkt.clouddn.com/feedback.png)
+![feedback](http://cyblog.oss-cn-hangzhou.aliyuncs.com/FMQ%E4%B9%8B%E4%BA%8B%E5%8A%A1%E6%B6%88%E6%81%AF/feedback.png)
 
 
 事务消息交互流程如下：
@@ -283,7 +283,7 @@ public interface TxStatusQuerier {
 
 一条事务消息在服务端的同步刷盘过程如下，我们逐次分析如果在每个阶段宕机，服务端如何恢复以及客户端如何处理。
 
-![分布式事务流程](http://ovor60v7j.bkt.clouddn.com/%E4%BA%8B%E5%8A%A1%E6%B6%88%E6%81%AF%E6%B5%81%E7%A8%8B.png)
+![分布式事务流程](http://cyblog.oss-cn-hangzhou.aliyuncs.com/FMQ%E4%B9%8B%E4%BA%8B%E5%8A%A1%E6%B6%88%E6%81%AF/%E4%BA%8B%E5%8A%A1%E6%B6%88%E6%81%AF%E6%B5%81%E7%A8%8B.png)
 
 #### 3.3.7.1 prepare flush前宕机
 

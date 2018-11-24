@@ -32,16 +32,16 @@ copying(){  $free = $to_start  for(r : $roots){	*r = copy(*r)  }
 * 执行分配操作，直接向后移动指针
 ### 1.4 执行过程
 GC初始状态
-![GC初始状态](http://ovor60v7j.bkt.clouddn.com/blog/GC%E4%B9%8B%E5%A4%8D%E5%88%B6%E7%AE%97%E6%B3%95/%E5%88%9D%E5%A7%8B%E7%8A%B6%E6%80%81.png)
+![GC初始状态](http://cyblog.oss-cn-hangzhou.aliyuncs.com/GC%E4%B9%8B%E5%A4%8D%E5%88%B6%E7%AE%97%E6%B3%95/%E5%88%9D%E5%A7%8B%E7%8A%B6%E6%80%81.png)
 
 复制引用B
-![复制引用B](http://ovor60v7j.bkt.clouddn.com/blog/GC%E4%B9%8B%E5%A4%8D%E5%88%B6%E7%AE%97%E6%B3%95/B%E8%A2%AB%E5%A4%8D%E5%88%B6.png)
+![复制引用B](http://cyblog.oss-cn-hangzhou.aliyuncs.com/GC%E4%B9%8B%E5%A4%8D%E5%88%B6%E7%AE%97%E6%B3%95/B%E8%A2%AB%E5%A4%8D%E5%88%B6.png)
 
 B被完整复制
-![B被完整复制](http://ovor60v7j.bkt.clouddn.com/blog/GC%E4%B9%8B%E5%A4%8D%E5%88%B6%E7%AE%97%E6%B3%95/B%E8%A2%AB%E5%AE%8C%E6%95%B4%E5%A4%8D%E5%88%B6.png)
+![B被完整复制](http://cyblog.oss-cn-hangzhou.aliyuncs.com/GC%E4%B9%8B%E5%A4%8D%E5%88%B6%E7%AE%97%E6%B3%95/B%E8%A2%AB%E5%AE%8C%E6%95%B4%E5%A4%8D%E5%88%B6.png)
 
 GC结束
-![GC结束](http://ovor60v7j.bkt.clouddn.com/blog/GC%E4%B9%8B%E5%A4%8D%E5%88%B6%E7%AE%97%E6%B3%95/GC%E7%BB%93%E6%9D%9F.png)
+![GC结束](http://cyblog.oss-cn-hangzhou.aliyuncs.com/GC%E4%B9%8B%E5%A4%8D%E5%88%B6%E7%AE%97%E6%B3%95/GC%E7%BB%93%E6%9D%9F.png)
 
 
 ## 2 优缺点

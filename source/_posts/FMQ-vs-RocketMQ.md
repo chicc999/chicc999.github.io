@@ -30,7 +30,7 @@ RocketMQ架构如图所示，主要包括client(producer，consumer)，NameServe
 每个broker启动时，将自己的信息以及元数据注册到NameServer，元信息包括broker所拥有的topic信息。client启动的时候，向NameServer查阅所需的topic信息，NameServer返回此topic对应的broker信息（broker 名称到地址的映射），client直接和broker通信。
 
 ## FMQ
-![RocketMQ架构](http://ovor60v7j.bkt.clouddn.com/blog/FMQVSRMQFMQ%E6%9E%B6%E6%9E%84.png)
+![FMQQ架构](http://cyblog.oss-cn-hangzhou.aliyuncs.com/FMQ%20vs%20RMQ/FMQVSRMQFMQ%E6%9E%B6%E6%9E%84.png)
 FMQ 2.0的架构如图所示，分为核心组件（必须部署）和可选组件（提供消息队列以外额外功能）。  
 ### 自研核心组件  
 * client
@@ -116,7 +116,7 @@ SendResult sendResult = producer.send(msg, new MessageQueueSelector() {
 
 ### 2.2.4 事务消息
 事务消息是指本地操作与发送消息两个操作，在操作成功的同时要保证消息一定发送成功，操作失败的情况下消息一定不能发送。采用两阶段提交的方式流程如下图：
-![2PC](http://ovor60v7j.bkt.clouddn.com/blog/FMQVSRMQ/2pc.png)
+![2PC](http://cyblog.oss-cn-hangzhou.aliyuncs.com/FMQ%20vs%20RMQ/2pc.png)
 
 1. 客户端先发送消息，此时消息在broker中处于prepared状态;
 2. 服务端收到消息，存入内存中（或磁盘的prepared队列），回复ack；
@@ -125,7 +125,8 @@ SendResult sendResult = producer.send(msg, new MessageQueueSelector() {
 
 以上是一个标准的两阶段提交过程。
 #### RocketMQ
-![事务消息](http://ovor60v7j.bkt.clouddn.com/blog/FMQVSRMQ/%E4%BA%8B%E5%8A%A1%E6%B6%88%E6%81%AF.png)
+
+![事务消息](http://cyblog.oss-cn-hangzhou.aliyuncs.com/FMQ%20vs%20RMQ/%E4%BA%8B%E5%8A%A1%E6%B6%88%E6%81%AF.png)
 RocketMQ事务消息过程如图所示。
 
 1. 客户端先发送消息，此时消息在broker中处于prepared状态;

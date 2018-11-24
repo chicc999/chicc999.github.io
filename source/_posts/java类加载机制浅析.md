@@ -48,7 +48,7 @@ comments: false
 
 ## 双亲委派模型
 
-![双亲委派](http://ovor60v7j.bkt.clouddn.com/blog/classLoader/%E5%8F%8C%E4%BA%B2%E5%A7%94%E6%B4%BE.png)
+![双亲委派](http://cyblog.oss-cn-hangzhou.aliyuncs.com/classLoader/%E5%8F%8C%E4%BA%B2%E5%A7%94%E6%B4%BE.png)
 
 双亲委派模型如图所示，除了顶层的启动类加载器以外，其余的所有类加载器都应当有自己的父类加载器。
 

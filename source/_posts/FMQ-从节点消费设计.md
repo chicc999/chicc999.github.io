@@ -149,7 +149,7 @@ Slave节点需要自行判断是否需要触发从消费。首先启动一个定
 
 ## 4.1 consume offset同步
 
-![consume offset同步](http://ovor60v7j.bkt.clouddn.com/getConsumeOffset.png)
+![consume offset同步](http://cyblog.oss-cn-hangzhou.aliyuncs.com/MQ%20%E4%BB%8E%E8%8A%82%E7%82%B9%E6%B6%88%E8%B4%B9/getConsumeOffset.png)
 
 * slave：启动定时任务，将自身的ConsumeOffset、是否处于从消费模式两个字段序列化后发给master。
 * master：如果slave处于从消费模式，则master中的ConsumeOffset更新为slave内存中的值。
@@ -171,7 +171,7 @@ Slave节点需要自行判断是否需要触发从消费。首先启动一个定
 根据以上问题，改进了流程，在从节点取消读权限之前master不给于读权限，在zk发生变更以后再做修改：
 
 master崩溃后启动时序图如下所示：
-![consume offset同步](http://ovor60v7j.bkt.clouddn.com/master%E5%90%AF%E5%8A%A8%E6%97%B6%E5%BA%8F.png)
+![master启动时序](http://cyblog.oss-cn-hangzhou.aliyuncs.com/MQ%20%E4%BB%8E%E8%8A%82%E7%82%B9%E6%B6%88%E8%B4%B9/master%E5%90%AF%E5%8A%A8%E6%97%B6%E5%BA%8F.png)
 
 * master启动，向zk注册存活，并且检查是否处于从消费状态。
 * 发现处于从消费状态，将自身权限置为NONE。

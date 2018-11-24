@@ -14,7 +14,7 @@ comments: true
 
 # 1 failover方案
 
-FMQ对于一组broker采用master-slave结构，slave是对master的Full Backup。在正常情况下，master处于active状态，slave处于standby状态。当主从其中一台宕机时，另一台切换为active状态。但由于slave只有写权限，所以对于后续的消息写入操作，此组broker不再提供写入。这样对于写入操作，可用性就很差。为了解决这个问题，我们会给主题配备多组broker（一般会跨机房），并在故障时通过权重控制，将流量打到无故障的broker上，本节对此做简要介绍。
+FMQ对于一组broker采用master-slave结构，slave是对master的Full Backup。在正常情况下，master处于active状态，slave处于standby状态。当主从其中一台宕机时，另一台切换为active状态。但由于slave只有读权限，所以对于后续的消息写入操作，此组broker不再提供写入。这样对于写入操作，可用性就很差。为了解决这个问题，我们会给主题配备多组broker（一般会跨机房），并在故障时通过权重控制，将流量打到无故障的broker上，本节对此做简要介绍。
 
 ## 1.1 基于权重的容灾
 
@@ -57,7 +57,7 @@ electTransport方法的返回值是选择的broker对应的transport，electQueu
 
 FMQ客户端中的默认实现，借鉴遗传算法中按照概率选择下一代的轮盘赌策略，来选择broker。假设一个topic分配了N个broker分组，分组i的权重为𝒘(𝒙<sub>𝒊</sub>),则此producer选择分组i的概率为
 
-![轮盘赌](http://ovor60v7j.bkt.clouddn.com/blog/FMQ%E4%B9%8B%E5%AE%A2%E6%88%B7%E7%AB%AF%E8%A1%80%E6%B3%AA%E5%8D%87%E7%BA%A7%E5%8F%B2/%E6%9D%83%E9%87%8D%E5%85%AC%E5%BC%8F.png)
+![轮盘赌](http://cyblog.oss-cn-hangzhou.aliyuncs.com/FMQ%E4%B9%8B%E5%AE%A2%E6%88%B7%E7%AB%AF%E8%A1%80%E6%B3%AA%E5%8D%87%E7%BA%A7%E5%8F%B2/%E6%9D%83%E9%87%8D%E5%85%AC%E5%BC%8F.png)
 
 由此我们只需要控制broker的权重，即可以控制消息的路由策略。
 
@@ -84,7 +84,7 @@ FMQ客户端中的默认实现，借鉴遗传算法中按照概率选择下一�
 
 ## 1.2 重试
 
-在某一次请求中，如果出现异常，按照1.1的设计，后续请求会被自动路由到正常工作的broker上。但是还存在问题：从网络或者对端出问题，到应用层发现问题并修改权重存在时间窗口，在此窗口内会大量失败。  为了解决这个问题，我们引入了重试机制。
+在某一次请求中，如果出现异常，按照1.1的设计，后续请求会被自动路由到正常工作的broker上。但是还存在问题：如果网络或者对端服务出问题，从实际出现问题到应用层发现问题并修改权重存在时间窗口，在此窗口内会大量失败。为了解决这个问题，我们引入了重试机制。
 
 * 用户发送消息时会指定一个超时（不指定会有默认超时），当消息发送失败且超时时间未到时，会自动进行重试。
 * 重试时会自动排除此次请求已经发送过但是失败的broker。
@@ -98,7 +98,7 @@ FMQ客户端中的默认实现，借鉴遗传算法中按照概率选择下一�
 
 # 2 超时？超时！
 
-在做了1.2中的重试后，已经很好的解决了自动容灾的问题。但是在生产环境中，却经常报请求超时，这与我们的设计不符（单次请求平均耗时不到1ms，超时5s够重试5000多次）。
+在做了1.2中的重试后，已经很好的解决了自动容灾的问题。但是在生产环境中，却经常报请求超时，这与我们的设计不符（单次请求平均耗时不到1ms，5s的默认超时时间足够重试5000多次）。
 
 ## 2.1 原因分析
 
@@ -106,9 +106,9 @@ FMQ客户端中的默认实现，借鉴遗传算法中按照概率选择下一�
 
 ## 2.2 解决方案
 
-此问题的本质是，对于已经接收的请求，由于宕机等原因，对端无法再给出响应。导致客户端不得不一直等待到超时，同时超时又导致了重试机制不生效。那能不能在对端宕机时，得到快速的失败呢？设计如下类，将request和发送的channel进行绑定
+此问题的本质是，对于已经接收的请求，由于宕机等原因，对端无法再给出响应。而由于发送实际上是异步调用，只会在超时或者有响应时才会触发回调。导致客户端不得不一直等待到超时，同时超时又导致了重试机制不生效。那能不能在对端宕机时，得到快速的失败呢？设计如下类，将request和发送的channel进行绑定.
 
-```
+```java
 public class ResponseFutureUtil {
 	private static final AttributeKey<ConcurrentSet<Integer>> REQUEST_ID = AttributeKey
 			.valueOf("requestIDSet");
@@ -180,7 +180,7 @@ public class ResponseFutureUtil {
 
 ## 3.2 故障排查
 
-首先由于日志显示未进行重连，连接也没有异常;tcp状态显示连接为建立状态，由此可以推断应用层并没有感知到对端宕机。在此次故障中，主要有以下几个问题需要解决。
+首先由于日志显示未进行重连，连接也没有异常。tcp状态显示连接为建立状态，由此可以推断应用层并没有感知到对端宕机。在此次故障中，主要有以下几个问题需要解决。
 
 1. 对端宕机为何tcp没有发现连接异常，还处于ESTABLISHED状态？
 2. 之前也有做过宕机以及网络物理断开（拔网线）的测试，为何没有出现长时间的成功率下降？
@@ -195,13 +195,13 @@ public class ResponseFutureUtil {
 首先尝试复现生产环境的问题。
 
 * 对于远端物理机，shutdown -h now 以及拔网线均能复现场景。
-* 对于本地物理机，shutdown -h now 的情况下无法复现；物理断开连接可以复现。
+* 对于本地物理机，shutdown -h now 的情况下无法复现；物理断开连接（拔网线）可以复现。
 
 通过tcpdump以及用wireshark进行分析发现，本地 shutdown -h now 的情况下，会收到FIN，自然应用层能感知到。而复杂网络跨机房的情况下，远端机器宕机的情况下客户端并没有收到FIN。
 
 同时抓包发现，当服务器宕机或者网络连接被断开，客户端进入tcp的超时重传模式，如下图。
 
-![超时重传](http://ovor60v7j.bkt.clouddn.com/%E8%B6%85%E6%97%B6%E9%87%8D%E4%BC%A0.png)
+![超时重传](http://cyblog.oss-cn-hangzhou.aliyuncs.com/FMQ%E4%B9%8B%E5%AE%A2%E6%88%B7%E7%AB%AF%E8%A1%80%E6%B3%AA%E5%8D%87%E7%BA%A7%E5%8F%B2/%E8%B6%85%E6%97%B6%E9%87%8D%E4%BC%A0.png)
 
 在超时重传过程中，连接始终处于ESTABLISHED。查看本机的tcp超时重传次数设置，在/proc/sys/net/ipv4下找到tcp_retries2文件打开：
 
@@ -345,11 +345,11 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
 
 ChannelOutboundBuffer内部维护了一个Entry链表，将msg封装成Entry里放入链表。其中tailEntry 指向链表尾部，flushedEntry 指向链表待执行flushed的Entry，unflushedEntry指向下一个待标记为不可取消的Entry。此链表变化结构如下：
 
-![Entry链表](http://ovor60v7j.bkt.clouddn.com/blog/FMQ%E4%B9%8B%E5%AE%A2%E6%88%B7%E7%AB%AF%E8%A1%80%E6%B3%AA%E5%8D%87%E7%BA%A7%E5%8F%B2/EntryList.png)
+![Entry链表](http://cyblog.oss-cn-hangzhou.aliyuncs.com/FMQ%E4%B9%8B%E5%AE%A2%E6%88%B7%E7%AB%AF%E8%A1%80%E6%B3%AA%E5%8D%87%E7%BA%A7%E5%8F%B2/EntryList.png)
 
 如果一次后续的flush能将所有Entry都写出去，则链表恢复初始状态（无数据）；如果只写出了一部分Entry，就又进行了addMessage操作，那么指针情况如下：
 
-![Entry链表](http://ovor60v7j.bkt.clouddn.com/blog/FMQ%E4%B9%8B%E5%AE%A2%E6%88%B7%E7%AB%AF%E8%A1%80%E6%B3%AA%E5%8D%87%E7%BA%A7%E5%8F%B2/addMessage.png)
+![Entry链表](http://cyblog.oss-cn-hangzhou.aliyuncs.com/FMQ%E4%B9%8B%E5%AE%A2%E6%88%B7%E7%AB%AF%E8%A1%80%E6%B3%AA%E5%8D%87%E7%BA%A7%E5%8F%B2/addMessage.png)
 
 
 由此可见，msg以及promise最终被包装成了entry，添加到了未flush的的链表里，而没有真正写出去。
@@ -407,8 +407,7 @@ flush() 分别执行了 outboundBuffer的 addFlush 方法和自身的 flush0 方
 
 继续看flush0（）方法
 
-```
-
+```java
         protected void flush0() {
             if (inFlush0) {
                 // 避免重入,由于netty4的线程模型，此时应该只会由IO线程单线程执行，不明白为何会有这个判断
@@ -642,7 +641,7 @@ flush() 分别执行了 outboundBuffer的 addFlush 方法和自身的 flush0 方
 
 此过程无论是哪种情况都会被执行，因为后两种情况下也有可能有一部分Entry写成功，需要进行处理。如果完全写成功，写入算是已经完成了。如果还有未写成功的呢？我们继续看incompleteWrite方法。
 
-```
+```java
 protected final void incompleteWrite(boolean setOpWrite) {
         // Did not write completely.
         if (setOpWrite) {
@@ -795,7 +794,7 @@ lastReadTime在每次channelReadComplete被调用的时候刷新，lastWriteTime
 
 channelIdle中调用了ChannelHandlerContext的fireUserEventTriggered方法，此方法会通过findContextInbound的实现，找到下一个InboundHandler,然后调用其userEventTriggered方法。我们再来看业务类中userEventTriggered的实现。
 
-```
+```java
  @Override
         public void userEventTriggered(final ChannelHandlerContext ctx, final Object evt) throws Exception {
             if (evt instanceof IdleStateEvent) {
@@ -891,11 +890,11 @@ channelIdle中调用了ChannelHandlerContext的fireUserEventTriggered方法，�
 首先复现此问题，观察日志发现，第一次失败发生在 14:28:04 requestId=615 ,并且于 14:30:54 恢复，共持续170s。
 同时wireshark进行抓包，发现最后一次RTO发生在故障出现144.9s后，并且于20s后触发RST，与日志恢复时间比较一致，如下图所示。
 
-![RST](http://ovor60v7j.bkt.clouddn.com/blog/FMQ%E4%B9%8B%E5%AE%A2%E6%88%B7%E7%AB%AF%E8%A1%80%E6%B3%AA%E5%8D%87%E7%BA%A7%E5%8F%B2/RST.png)
+![RST](http://cyblog.oss-cn-hangzhou.aliyuncs.com/FMQ%E4%B9%8B%E5%AE%A2%E6%88%B7%E7%AB%AF%E8%A1%80%E6%B3%AA%E5%8D%87%E7%BA%A7%E5%8F%B2/RST.png)
 
 同时查看日志，14:28:37 requestID=724为最后一个立即调用写出成功回调的请求，14:28:04 开始到目前为止总共有请求110个。由于配置了2台机器，按概率平分，每台机器预计55个请求（数据量小可能会上下波动）。通过debug观察到每个包大小为136个字节，网络缓冲区配置为8K，60个请求会将缓冲区写满，从而应用层再得不到写入成功回调。
 
-![putMessageSize](http://ovor60v7j.bkt.clouddn.com/blog/FMQ%E4%B9%8B%E5%AE%A2%E6%88%B7%E7%AB%AF%E8%A1%80%E6%B3%AA%E5%8D%87%E7%BA%A7%E5%8F%B2/putMessageSize.png)
+![putMessageSize](http://cyblog.oss-cn-hangzhou.aliyuncs.com/FMQ%E4%B9%8B%E5%AE%A2%E6%88%B7%E7%AB%AF%E8%A1%80%E6%B3%AA%E5%8D%87%E7%BA%A7%E5%8F%B2/putMessageSize.png)
 
 以上结果与源码阅读完的推测现象完全一致。
 
@@ -903,7 +902,7 @@ channelIdle中调用了ChannelHandlerContext的fireUserEventTriggered方法，�
 
 将读写idle进行分离，同时读idle设置默认值为70s，写idle默认值为30s。当触发读idle时，可以认为对端机器出问题或者网络问题（还有种可能是对端用的并非本框架），直接关闭连接。
 
-```
+```java
 public void userEventTriggered(final ChannelHandlerContext ctx, final Object evt) throws Exception {
 			if (evt instanceof IdleStateEvent) {
 				IdleStateEvent event = (IdleStateEvent) evt;

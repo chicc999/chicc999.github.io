@@ -48,7 +48,7 @@ try {
     att = null;
 ```
 创建完成以后，对象的引用关系如下：
-![申请堆外内存完毕](http://ovor60v7j.bkt.clouddn.com/%E7%94%B3%E8%AF%B7%E5%A0%86%E5%A4%96%E5%86%85%E5%AD%98.png)
+![申请堆外内存完毕](http://cyblog.oss-cn-hangzhou.aliyuncs.com/%E7%94%B1%E4%B8%80%E6%AC%A1%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8Fbug%E5%BC%95%E5%8F%91%E7%9A%84%E6%80%9D%E8%80%83/%E7%94%B3%E8%AF%B7%E5%A0%86%E5%A4%96%E5%86%85%E5%AD%98.png)
 
 ```java
 public class Cleaner extends PhantomReference<Object> {
@@ -80,7 +80,7 @@ Cleaner的构造中可以看出有个类的静态变量first，相当于Clener�
 
 如果该DirectByteBuffer对象在一次GC中被回收了，Cleaner失去了强引用。如下图所示：
 
-![申请堆外内存完毕](http://ovor60v7j.bkt.clouddn.com/%E5%9B%9E%E6%94%B6%E5%A0%86%E5%A4%96%E5%86%85%E5%AD%98.png)
+![回收堆外内存](http://cyblog.oss-cn-hangzhou.aliyuncs.com/%E7%94%B1%E4%B8%80%E6%AC%A1%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8Fbug%E5%BC%95%E5%8F%91%E7%9A%84%E6%80%9D%E8%80%83/%E5%9B%9E%E6%94%B6%E5%A0%86%E5%A4%96%E5%86%85%E5%AD%98.png)
 
 于是在下一次FGC时，Cleaner对象被垃圾回收器放入到pending链表中。
 在Reference中起了一个守护线程，一直在执行tryHandlePending，以下为实现

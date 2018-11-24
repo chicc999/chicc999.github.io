@@ -11,7 +11,7 @@ comments: false
 <!--more-->
 ## 1 算法简介
 引用计数法中引入了“计数器”的概念，表示有多少程序引用了这个对象（被引用数）。引用计数法中的对象如下图所示。
-![引用计数](http://ovor60v7j.bkt.clouddn.com/blog/GC%E4%B9%8B%E5%BC%95%E7%94%A8%E8%AE%A1%E6%95%B0/%E5%BC%95%E7%94%A8%E8%AE%A1%E6%95%B0.png)
+![引用计数](http://cyblog.oss-cn-hangzhou.aliyuncs.com/GC%E4%B9%8B%E5%BC%95%E7%94%A8%E8%AE%A1%E6%95%B0/%E5%BC%95%E7%94%A8%E8%AE%A1%E6%95%B0.png)
 
 
 ## 2 引用计数的算法
@@ -34,7 +34,7 @@ update_ptr() 函数做了以下操作，来更新指针指向另一个对象:
 * 原指针指向对象引用数减1
 * 改变指针指向。
 
-![update_ptr()](http://ovor60v7j.bkt.clouddn.com/blog/GC%E4%B9%8B%E5%BC%95%E7%94%A8%E8%AE%A1%E6%95%B0/update_ptr%E6%89%A7%E8%A1%8C%E6%83%85%E5%86%B5.png)
+![update_ptr()](http://cyblog.oss-cn-hangzhou.aliyuncs.com/GC%E4%B9%8B%E5%BC%95%E7%94%A8%E8%AE%A1%E6%95%B0/update_ptr%E6%89%A7%E8%A1%8C%E6%83%85%E5%86%B5.png)
 
 
 注意一定要先调用inc_ref_cnt，再调用dec_ref_cnt，来避免*ptr和obj是同一个对象时，由于减少引用计数导致obj被提前回收的bug。其中inc_ref_cnt() 函数只是单纯增加引用数，代码如下：
@@ -79,7 +79,7 @@ dec_ref_cnt(obj){  obj.ref_cnt--  if(obj.ref_cnt == 0){	for(child : children(
 
 由于计数器值增减处理繁重的原因之一是从根的引用变化频繁，因此延迟引用计数法的核心思想是让从根引用的指针的变化不反映在计数器上。
 因为引用没有反映到计数器上，所以各个对象的计数器没有正确表示出对象本身的被引用数。为了解决这一问题，使用ZCT（Zero Count Table）。ZCT是一个表，它会事先记录下计数器值在dec_ref_cnt() 函数的作用下变为0的对象，如下图所示。
-![ZCT](http://ovor60v7j.bkt.clouddn.com/blog/GC%E4%B9%8B%E5%BC%95%E7%94%A8%E8%AE%A1%E6%95%B0/ZCT.png)
+![ZCT](http://cyblog.oss-cn-hangzhou.aliyuncs.com/GC%E4%B9%8B%E5%BC%95%E7%94%A8%E8%AE%A1%E6%95%B0/ZCT.png)
 ### 4.2 dec_ref_cnt()函数
 因为计数器值为0 的对象不一定都是垃圾，所以暂时先将这些对象保留。我们必须修正dec_ref_cnt() 函数，使其适应延迟引用计数法。
 ```

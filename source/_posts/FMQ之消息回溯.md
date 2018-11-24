@@ -48,3 +48,22 @@ comments: true
 
 
 ## 3 实现
+
+
+### offset
+
+* subscribeOffset 消费者接入开始消费的位置
+* ackOffset 消费者已经消费的位置
+* acks 消费区间
+
+#### queueOffset.acknowledge
+
+* 更新acks值
+* 判断ackOffset是否需要更新.满足一下两个条件之一
+	* ackOffset > subscribeOffset （ackOffset == subscribeOffset 说明未被消费过，ackOffset < subscribeOffset 说明消费过程中取消订阅又重新订阅，然后与offsetManager的createOffset发生并发问题，见异常情况1）
+	* headSequence.contains(target.getSubscribeOffset().get() + ConsumeQueue.CQ_RECORD_SIZE) 不符合这条说明区间最开始的都没ack，不需要更新ack值
+	
+	
+### 异常情况
+
+* 先取消订阅，再订阅，此时正好发生ack，发现subscribeOffset由于订阅被置为maxOffset，ackOffset尚未来得及被重置，则ackOffset<subscribeOffset.此时应该正常。
