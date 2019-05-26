@@ -160,7 +160,7 @@ public RegisterBrokerResult registerBroker(
                     brokerData = new BrokerData(clusterName, brokerName, new HashMap<Long, String>());
                     this.brokerAddrTable.put(brokerName, brokerData);
                 }
-                // 128行似乎没有必要设置为true,此部分加了写锁，如果brokerData为新增，则此处oldAddr为null，会在135行置为true
+                // 4行之前似乎没有必要设置为true,此部分加了写锁，如果brokerData为新增，则此处oldAddr为null，会在135行置为true
                 String oldAddr = brokerData.getBrokerAddrs().put(brokerId, brokerAddr);
                 // 新增broker的话将registerFirst置为true
                 registerFirst = registerFirst || (null == oldAddr);
@@ -453,10 +453,7 @@ TopicRouteData topicRouteData = this.namesrvController.getRouteInfoManager().pic
 * 选出和这些队列相关的broker,将这些broker的路由信息添加到响应中
 * 添加过滤服务器
 
-#### 设计思考
 
-* 以队列为维度管理消息，相比让broker自身管理，增加了NameServer的复杂度，但是相对的权限管理的粒度也变成了按队列。是否有必要呢？
-* 对于同一个主题，是否可以将结果进行缓存，避免每次计算？（如果主题等配置不发生变化）
 
 
 # 4 总结
