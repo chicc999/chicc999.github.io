@@ -91,6 +91,16 @@ changyan_conf: ‘5214a48c1c6236d3ecb73fb5f9379ec0’
 #4、Disqus 在hexo根目录的config里也有disqus_shortname字段，优先使用yilia的
 disqus: false
 
+#6、Valine https://valine.js.org
+valine: 
+ appid:  BzKGcTo4UNtT4IpaATerPTx5-gzGzoHsz
+ appkey:  NnCOVTUuM18eE3QQgQK71pq5
+ verify: false #验证码
+ notify: false #评论回复提醒
+ avatar: mm #评论列表头像样式：''/mm/identicon/monsterid/wavatar/retro/hide
+ placeholder: Life is better when shared! #评论框占位符
+ pageSize: 15 #评论分页
+
 # 样式定制 - 一般不需要修改，除非有很强的定制欲望…
 style:
   # 头像上面的背景颜色

@@ -3,6 +3,7 @@
     <% if (post.link || post.title){ %>
       <header class="article-header">
         <%- partial('post/title', {class_name: 'article-title'}) %>
+
         <% if (!post.noDate){ %>
         <%- partial('post/date', {class_name: 'archive-article-date', date_format: null}) %>
         <% } %>
@@ -80,6 +81,20 @@
 
 
 <% if (!index && post.comments){ %>
+  <% if (theme.valine && theme.valine.appid && theme.valine.appkey){ %>
+  <section id="comments" class="comments">
+    <style>
+      .comments{margin:30px;padding:10px;background:#fff}
+      @media screen and (max-width:800px){.comments{margin:auto;padding:10px;background:#fff}}
+    </style>
+    <%- partial('post/valine', {
+      key: post.slug,
+      title: post.title,
+      url: config.url+url_for(post.path)
+      }) %>
+  </section>
+<% } %>
+
   <% if (theme.duoshuo){ %>
   <%- partial('post/duoshuo', {
       key: post.slug,
@@ -130,3 +145,4 @@
     }) %>
   <% } %>
 <% } %>
+
