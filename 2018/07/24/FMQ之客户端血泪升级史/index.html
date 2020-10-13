@@ -9,7 +9,7 @@
   <title>FMQ之客户端血泪升级史 | 陈大白的博客</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
   <meta name="description" content="本文介绍了FMQ的生产者自动故障切换的原理，以及在生产环境中遇到的问题及改进方案。从自动容灾、重试、重连、心跳检测等多方面，结合生产环境中实际遇到的问题，介绍了升级的过程。">
-<meta name="keywords" content="中间件,消息队列,failover">
+<meta name="keywords" content="消息队列,中间件,failover">
 <meta property="og:type" content="article">
 <meta property="og:title" content="FMQ之客户端血泪升级史">
 <meta property="og:url" content="http://chenyun0322.cn/2018/07/24/FMQ之客户端血泪升级史/index.html">
@@ -193,19 +193,17 @@
     </h1>
   
 
-        
-        <!--显示阅读次数-->
+<!--显示阅读次数-->
 
   <br/>
   <a class="cloud-tie-join-count" href="javascript:void(0);" style="color:gray;font-size:14px;">
   <span class="icon-sort"></span>
-  <span id="busuanzi_container_page_pv" style="color:#ef7522;font-size:14px;">
+  <span style="color:#ef7522;font-size:14px;">
             阅读数: <span id="busuanzi_value_page_pv"></span>次 &nbsp;&nbsp;
   </span>
   </a>
 
 <!--显示阅读次数完毕-->
-
         
         <a href="/2018/07/24/FMQ之客户端血泪升级史/" class="archive-article-date">
   	<time datetime="2018-07-24T07:02:53.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2018-07-24</time>
@@ -407,11 +405,11 @@
 		<ul class="article-tag-list">
 			 
         		<li class="article-tag-list-item">
-        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color4">中间件</a>
+        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color5">消息队列</a>
         		</li>
       		 
         		<li class="article-tag-list-item">
-        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color5">消息队列</a>
+        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color4">中间件</a>
         		</li>
       		 
         		<li class="article-tag-list-item">
@@ -686,7 +684,7 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color4">中间件</a>
+                <a href="javascript:void(0)" class="js-tag color4">FMQ</a>
               </li>
              
               <li class="article-tag-list-item">
@@ -694,15 +692,11 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color4">FMQ</a>
+                <a href="javascript:void(0)" class="js-tag color4">中间件</a>
               </li>
              
               <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color5">java</a>
-              </li>
-             
-              <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color4">failover</a>
               </li>
              
               <li class="article-tag-list-item">
@@ -726,11 +720,19 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color3">健身</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color3">计划</a>
+              </li>
+             
+              <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color4">JVM</a>
               </li>
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color3">旅行</a>
+                <a href="javascript:void(0)" class="js-tag color4">failover</a>
               </li>
              
               <li class="article-tag-list-item">
@@ -738,11 +740,7 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color3">健身</a>
-              </li>
-             
-              <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color3">计划</a>
+                <a href="javascript:void(0)" class="js-tag color3">旅行</a>
               </li>
             
             <div class="clearfix"></div>

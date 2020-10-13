@@ -16,7 +16,7 @@
 <meta property="og:site_name" content="陈大白的博客">
 <meta property="og:description" content="本文为论文《Durability with BookKeeper》的精简翻译（省略废话）、注解与解读。">
 <meta property="og:locale" content="zh-CN">
-<meta property="og:updated_time" content="2020-10-09T12:52:50.876Z">
+<meta property="og:updated_time" content="2020-10-13T13:52:11.252Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="BookKeeper的持久化机制">
 <meta name="twitter:description" content="本文为论文《Durability with BookKeeper》的精简翻译（省略废话）、注解与解读。">
@@ -186,19 +186,17 @@
     </h1>
   
 
-        
-        <!--显示阅读次数-->
+<!--显示阅读次数-->
 
   <br/>
   <a class="cloud-tie-join-count" href="javascript:void(0);" style="color:gray;font-size:14px;">
   <span class="icon-sort"></span>
-  <span id="busuanzi_container_page_pv" style="color:#ef7522;font-size:14px;">
+  <span style="color:#ef7522;font-size:14px;">
             阅读数: <span id="busuanzi_value_page_pv"></span>次 &nbsp;&nbsp;
   </span>
   </a>
 
 <!--显示阅读次数完毕-->
-
         
         <a href="/2019/10/07/BookKeeper的持久化机制/" class="archive-article-date">
   	<time datetime="2019-10-07T03:54:54.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2019-10-07</time>
@@ -210,20 +208,25 @@
       
         <p><em>本文为论文《Durability with BookKeeper》的精简翻译（省略废话）、注解与解读。</em><br><a id="more"></a></p>
 <h1 id="摘要"><a href="#摘要" class="headerlink" title="摘要"></a>摘要</h1><p>很多系统，例如数据库，文件系统，消息中间件（需要可靠投递的）等需要保证系统状态的变化是持久化的。如果要实现持久化，并且维持高性能，有一种通用的做法就是用日志来记录系统状态的变更。当机器发生宕机时，可以通过重放日志来进行状态的恢复。但是如果这个日志只存放在本地，当机器发生永久性硬件故障时，状态就会丢失。</p>
-<p>BookKeeper可以作为构建高性能、高可用的分布式系统的一个日志抽象。BookKeeper通过复制来实现高可用，通过条带化[^1]来实现高吞吐。BookKeeper存储的服务器称作<em>bookies</em>，可同时为大量ledgers提供服务。</p>
-<p>[^1]: ”条带化“即strip,类似概念可以参考组raid0时的strip size,即通过写不同设备来提高吞吐量。</p>
+<p>BookKeeper可以作为构建高性能、高可用的分布式系统的一个日志抽象。BookKeeper通过复制来实现高可用，通过条带化<sup>[1]</sup>来实现高吞吐。BookKeeper存储的服务器称作<em>bookies</em>，可同时为大量ledgers提供服务。</p>
+<p>注：</p>
+<p>[1] ”条带化“即strip,类似概念可以参考组raid0时的strip size,即通过写不同设备来提高吞吐量。</p>
 <h1 id="1-介绍"><a href="#1-介绍" class="headerlink" title="1 介绍"></a>1 介绍</h1><p>线上系统的更新通常通常需要持久化：</p>
-<p><strong>一旦一个更新请求被系统确认<a href="即响应给客户端">^2</a>，只要这个更新对应用程序有意义，该系统就必须将此更新反映到状态上。</strong></p>
-<p>举个栗子,对于数据库的行r在事务t中将值改为了v，则后续如果没有对r的操作，所有的读发生在t后对r的读都必须返回v。<a href="黑体加粗部分其实没有定义此更新反应到状态的时间，也就是最终一致性是可以被接受的。而举的例子实际上是线性一致性。当然此处没必要多纠结，只是举例，不同系统可以根据实际需要自己做取舍。">^3</a></p>
+<p><strong>一旦一个更新请求被系统确认<sup>[2]</sup>，只要这个更新对应用程序有意义，该系统就必须将此更新反映到状态上。</strong></p>
+<p>举个栗子,对于数据库的行r在事务t中将值改为了v，则后续如果没有对r的操作，所有的读发生在t后对r的读都必须返回v。<sup>[3]</sup></p>
 <p>后面主要介绍了以下观点：</p>
+<blockquote>
 <ul>
 <li><p>数据库是典型的需要实现持久化的系统。通过预写日志WAL，保证原子性和持久化（ACID中的”A”和”D“）的同时满足低延迟和高吞吐的需求。内存数据库和文件系统也大量采用此结构（分别举了mysql,db2，zookeeper,hadoop namenode,文件系统的例子）</p>
 </li>
 <li><p>但是当存储WAL的机器发生永久性硬件损坏，数据就丢失了</p>
 </li>
-<li>为了构建高可用系统，WAL必须和机器的可用性解耦来避免单点故障，比如把日志复制到多台机器</li>
-<li>把日志放到多个机器上需要额外的硬件资源，同时如果只存放单个日志（可能）会导致机器的利用率较低。因此需要设计一个能并发存储日志的系统。</li>
+<li><p>为了构建高可用系统，WAL必须和机器的可用性解耦来避免单点故障，比如把日志复制到多台机器</p>
+</li>
+<li><p>把日志放到多个机器上需要额外的硬件资源，同时如果只存放单个日志（可能）会导致机器的利用率较低。因此需要设计一个能并发存储日志的系统。</p>
+</li>
 </ul>
+</blockquote>
 <p>这个系统的日志可以来自不同的应用，或者同一个应用的不同实例。实际上，现在已经有些系统就已经需要并发日志，每个日志有一个writer和多个reader。举个例子，消息系统可以把每个主题映射为一个日志，这些日志可以并行写入。</p>
 <p>在请求被执行和回复客户端之前，需要先被写入WAL。对于追加写（append only）方式的日志，可以顺序的写入日志，从而减少磁盘寻道次数，这对减少常见操作对于性能的影响非常重要。</p>
 <p>解耦日志的实现和机器之间的关系，可以在机器发生永久性故障时，依旧能恢复出日志。</p>
@@ -232,6 +235,9 @@
 <li>写入NFS(举了个雅虎的例子)，会有NFS机器的单点问题；如果NFS开启复制，性能开销比较大；</li>
 <li></li>
 </ul>
+<p>注：</p>
+<p>[2] 即响应给客户端</p>
+<p>[3] 黑体加粗部分其实没有定义此更新反应到状态的时间，也就是最终一致性是可以被接受的。而举的例子实际上是线性一致性。当然此处没必要多纠结，只是举例，不同系统可以根据实际需要自己做取舍。</p>
 
       
 
@@ -532,7 +538,7 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color4">中间件</a>
+                <a href="javascript:void(0)" class="js-tag color4">FMQ</a>
               </li>
              
               <li class="article-tag-list-item">
@@ -540,15 +546,11 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color4">FMQ</a>
+                <a href="javascript:void(0)" class="js-tag color4">中间件</a>
               </li>
              
               <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color5">java</a>
-              </li>
-             
-              <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color4">failover</a>
               </li>
              
               <li class="article-tag-list-item">
@@ -572,11 +574,19 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color3">健身</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color3">计划</a>
+              </li>
+             
+              <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color4">JVM</a>
               </li>
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color3">旅行</a>
+                <a href="javascript:void(0)" class="js-tag color4">failover</a>
               </li>
              
               <li class="article-tag-list-item">
@@ -584,11 +594,7 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color3">健身</a>
-              </li>
-             
-              <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color3">计划</a>
+                <a href="javascript:void(0)" class="js-tag color3">旅行</a>
               </li>
             
             <div class="clearfix"></div>
