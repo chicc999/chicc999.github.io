@@ -209,24 +209,35 @@
     
     <div class="article-entry" itemprop="articleBody">
       
-        <p>由一次堆外内存泄漏引发的思考，如何回收堆外内存？如何利用虚引用进行资源释放？<br><a id="more"></a></p>
-<h1 id="问题描述"><a href="#问题描述" class="headerlink" title="问题描述"></a>问题描述</h1><p>文件系统的上传功能由于SDK是JAVA实现的，其它语言没法使用，所以用Netty写了个proxy，实现HTTP协议到自定义协议的转换，以支持其它语言上传文件。在测试中，发现有以下现象：</p>
+        <p>由一次堆外内存泄漏引发的思考，如何回收堆外内存？如何利用虚引用进行资源释放？</p>
+<a id="more"></a>
+<h1>问题描述</h1>
+<p>文件系统的上传功能由于SDK是JAVA实现的，其它语言没法使用，所以用Netty写了个proxy，实现HTTP协议到自定义协议的转换，以支持其它语言上传文件。在测试中，发现有以下现象：</p>
 <ul>
 <li>对于小文件的上传，内存短时间内持续上升，但是触发FULL GC以后能被正确回收。可以平稳运行。</li>
 <li>对于大文件的上传，堆内存以及堆外内存持续上升。最终导致堆外内存耗尽，虚拟机宕机。</li>
 </ul>
-<h1 id="问题解决"><a href="#问题解决" class="headerlink" title="问题解决"></a>问题解决</h1><p>这是很明显的内存泄漏问题。由于在proxy对于http的解码模块，使用了netty的HttpPostRequestDecoder，此对象直接使用堆外内存存储http请求的body部分。而在proxy的实现过程中，并没有在用完以后释放资源。忽略了类注释中的“You MUST call destroy() after completion to release all resources.“<br>这样在处理源源不断的请求过程中，堆外内存的使用不断上涨也就有了解释。但是仍然有个问题无法解释，为什么小文件和大文件的表现并不一样，后者会导致jvm宕机？</p>
-<h1 id="问题引申"><a href="#问题引申" class="headerlink" title="问题引申"></a>问题引申</h1><p>首先我们看第一个问题，小文件上传时，为什么可以回收泄漏的堆外内存？首先我们来看下堆外内存的自动回收机制。</p>
-<h3 id="堆外内存的申请"><a href="#堆外内存的申请" class="headerlink" title="堆外内存的申请"></a>堆外内存的申请</h3><p>JDK中使用DirectByteBuffer对象来表示堆外内存。<br>每个DirectByteBuffer对象在初始化时，都会调用unsafe.allocateMemory分配一段堆外内存，然后用返回的内存地址创建一个对应的Cleaner对象。如以下代码所示。</p>
+<h1>问题解决</h1>
+<p>这是很明显的内存泄漏问题。由于在proxy对于http的解码模块，使用了netty的HttpPostRequestDecoder，此对象直接使用堆外内存存储http请求的body部分。而在proxy的实现过程中，并没有在用完以后释放资源。忽略了类注释中的“You MUST call destroy() after completion to release all resources.“<br>
+这样在处理源源不断的请求过程中，堆外内存的使用不断上涨也就有了解释。但是仍然有个问题无法解释，为什么小文件和大文件的表现并不一样，后者会导致jvm宕机？</p>
+<h1>问题引申</h1>
+<p>首先我们看第一个问题，小文件上传时，为什么可以回收泄漏的堆外内存？首先我们来看下堆外内存的自动回收机制。</p>
+<h3 id="堆外内存的申请"><a class="header-anchor" href="#堆外内存的申请">¶</a>堆外内存的申请</h3>
+<p>JDK中使用DirectByteBuffer对象来表示堆外内存。<br>
+每个DirectByteBuffer对象在初始化时，都会调用unsafe.allocateMemory分配一段堆外内存，然后用返回的内存地址创建一个对应的Cleaner对象。如以下代码所示。</p>
 <figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">long</span> base = <span class="number">0</span>;</span><br><span class="line"><span class="keyword">try</span> &#123;</span><br><span class="line">	base = unsafe.allocateMemory(size);</span><br><span class="line">	&#125; <span class="keyword">catch</span> (OutOfMemoryError x) &#123;</span><br><span class="line">    Bits.unreserveMemory(size, cap);</span><br><span class="line">    <span class="keyword">throw</span> x;</span><br><span class="line">    &#125;</span><br><span class="line">    unsafe.setMemory(base, size, (<span class="keyword">byte</span>) <span class="number">0</span>);</span><br><span class="line">    <span class="keyword">if</span> (pa &amp;&amp; (base % ps != <span class="number">0</span>)) &#123;</span><br><span class="line">        <span class="comment">// Round up to page boundary</span></span><br><span class="line">        address = base + ps - (base &amp; (ps - <span class="number">1</span>));</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        address = base;</span><br><span class="line">    &#125;</span><br><span class="line">    cleaner = Cleaner.create(<span class="keyword">this</span>, <span class="keyword">new</span> Deallocator(base, size, cap));</span><br><span class="line">    att = <span class="keyword">null</span>;</span><br></pre></td></tr></table></figure>
-<p>创建完成以后，对象的引用关系如下：<br><img src="http://cyblog.oss-cn-hangzhou.aliyuncs.com/%E7%94%B1%E4%B8%80%E6%AC%A1%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8Fbug%E5%BC%95%E5%8F%91%E7%9A%84%E6%80%9D%E8%80%83/%E7%94%B3%E8%AF%B7%E5%A0%86%E5%A4%96%E5%86%85%E5%AD%98.png" alt="申请堆外内存完毕"></p>
+<p>创建完成以后，对象的引用关系如下：<br>
+<img src="http://cyblog.oss-cn-hangzhou.aliyuncs.com/%E7%94%B1%E4%B8%80%E6%AC%A1%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8Fbug%E5%BC%95%E5%8F%91%E7%9A%84%E6%80%9D%E8%80%83/%E7%94%B3%E8%AF%B7%E5%A0%86%E5%A4%96%E5%86%85%E5%AD%98.png" alt="申请堆外内存完毕"></p>
 <figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">Cleaner</span> <span class="keyword">extends</span> <span class="title">PhantomReference</span>&lt;<span class="title">Object</span>&gt; </span>&#123;</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> ReferenceQueue&lt;Object&gt; dummyQueue = <span class="keyword">new</span> ReferenceQueue();</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> Cleaner first = <span class="keyword">null</span>;</span><br><span class="line">    <span class="keyword">private</span> Cleaner next = <span class="keyword">null</span>;</span><br><span class="line">    <span class="keyword">private</span> Cleaner prev = <span class="keyword">null</span>;</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> Runnable thunk;</span><br><span class="line">    … …</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
-<p>Cleaner的构造中可以看出有个类的静态变量first，相当于Clener链表的根指针。有个静态的ReferenceQueue，被所有的cleaner实例共享。Cleaner对象在初始化时会被添加到Clener链表中。<br>注意DirectByteBuffer构造函数的倒数第二行，创建了一个Cleaner对象并且注册了回调，同时传入了this指针。来看下回调函数，这是一个Runnable对象。</p>
+<p>Cleaner的构造中可以看出有个类的静态变量first，相当于Clener链表的根指针。有个静态的ReferenceQueue，被所有的cleaner实例共享。Cleaner对象在初始化时会被添加到Clener链表中。<br>
+注意DirectByteBuffer构造函数的倒数第二行，创建了一个Cleaner对象并且注册了回调，同时传入了this指针。来看下回调函数，这是一个Runnable对象。</p>
 <figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">run</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="keyword">if</span> (address == <span class="number">0</span>) &#123;</span><br><span class="line">        <span class="comment">// Paranoia</span></span><br><span class="line">        <span class="keyword">return</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    unsafe.freeMemory(address);</span><br><span class="line">    address = <span class="number">0</span>;</span><br><span class="line">    Bits.unreserveMemory(size, capacity);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 <p>可以看到回调的实现就是在释放堆外内存。那什么时候这段代码被执行呢？</p>
-<h3 id="堆外内存的释放"><a href="#堆外内存的释放" class="headerlink" title="堆外内存的释放"></a>堆外内存的释放</h3><p>如果该DirectByteBuffer对象在一次GC中被回收了，Cleaner失去了强引用。如下图所示：</p>
+<h3 id="堆外内存的释放"><a class="header-anchor" href="#堆外内存的释放">¶</a>堆外内存的释放</h3>
+<p>如果该DirectByteBuffer对象在一次GC中被回收了，Cleaner失去了强引用。如下图所示：</p>
 <p><img src="http://cyblog.oss-cn-hangzhou.aliyuncs.com/%E7%94%B1%E4%B8%80%E6%AC%A1%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8Fbug%E5%BC%95%E5%8F%91%E7%9A%84%E6%80%9D%E8%80%83/%E5%9B%9E%E6%94%B6%E5%A0%86%E5%A4%96%E5%86%85%E5%AD%98.png" alt="回收堆外内存"></p>
-<p>于是在下一次FGC时，Cleaner对象被垃圾回收器放入到pending链表中。<br>在Reference中起了一个守护线程，一直在执行tryHandlePending，以下为实现</p>
+<p>于是在下一次FGC时，Cleaner对象被垃圾回收器放入到pending链表中。<br>
+在Reference中起了一个守护线程，一直在执行tryHandlePending，以下为实现</p>
 <figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">boolean</span> <span class="title">tryHandlePending</span><span class="params">(<span class="keyword">boolean</span> waitForNotify)</span> </span>&#123;</span><br><span class="line">       Reference&lt;Object&gt; r;</span><br><span class="line">       Cleaner c;</span><br><span class="line">       <span class="keyword">try</span> &#123;</span><br><span class="line">           <span class="keyword">synchronized</span> (lock) &#123;</span><br><span class="line">               <span class="keyword">if</span> (pending != <span class="keyword">null</span>) &#123;</span><br><span class="line">                   r = pending;</span><br><span class="line">                   <span class="comment">// 'instanceof' might throw OutOfMemoryError sometimes</span></span><br><span class="line">                   <span class="comment">// so do this before un-linking 'r' from the 'pending' chain...</span></span><br><span class="line">                   c = r <span class="keyword">instanceof</span> Cleaner ? (Cleaner) r : <span class="keyword">null</span>;</span><br><span class="line">                   <span class="comment">// unlink 'r' from 'pending' chain</span></span><br><span class="line">                   pending = r.discovered;</span><br><span class="line">                   r.discovered = <span class="keyword">null</span>;</span><br><span class="line">               &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                   <span class="comment">// The waiting on the lock may cause an OutOfMemoryError</span></span><br><span class="line">                   <span class="comment">// because it may try to allocate exception objects.</span></span><br><span class="line">                   <span class="keyword">if</span> (waitForNotify) &#123;</span><br><span class="line">                       lock.wait();</span><br><span class="line">                   &#125;</span><br><span class="line">                   <span class="comment">// retry if waited</span></span><br><span class="line">                   <span class="keyword">return</span> waitForNotify;</span><br><span class="line">               &#125;</span><br><span class="line">           &#125;</span><br><span class="line">       &#125; <span class="keyword">catch</span> (OutOfMemoryError x) &#123;</span><br><span class="line">           <span class="comment">// Give other threads CPU time so they hopefully drop some live references</span></span><br><span class="line">           <span class="comment">// and GC reclaims some space.</span></span><br><span class="line">           <span class="comment">// Also prevent CPU intensive spinning in case 'r instanceof Cleaner' above</span></span><br><span class="line">           <span class="comment">// persistently throws OOME for some time...</span></span><br><span class="line">           Thread.yield();</span><br><span class="line">           <span class="comment">// retry</span></span><br><span class="line">           <span class="keyword">return</span> <span class="keyword">true</span>;</span><br><span class="line">       &#125; <span class="keyword">catch</span> (InterruptedException x) &#123;</span><br><span class="line">           <span class="comment">// retry</span></span><br><span class="line">           <span class="keyword">return</span> <span class="keyword">true</span>;</span><br><span class="line">       &#125;</span><br><span class="line"></span><br><span class="line">       <span class="comment">// Fast path for cleaners</span></span><br><span class="line">       <span class="keyword">if</span> (c != <span class="keyword">null</span>) &#123;</span><br><span class="line">           c.clean();</span><br><span class="line">           <span class="keyword">return</span> <span class="keyword">true</span>;</span><br><span class="line">       &#125;</span><br><span class="line"></span><br><span class="line">       ReferenceQueue&lt;? <span class="keyword">super</span> Object&gt; q = r.queue;</span><br><span class="line">       <span class="keyword">if</span> (q != ReferenceQueue.NULL) q.enqueue(r);</span><br><span class="line">       <span class="keyword">return</span> <span class="keyword">true</span>;</span><br><span class="line">   &#125;</span><br></pre></td></tr></table></figure>
 <p>这个方法一个做了三件事情：</p>
 <ul>
@@ -239,11 +250,16 @@
 <p>Cleaner对象的clean方法主要有两个作用：</p>
 <ul>
 <li>Cleaner对象的实例先将自己从静态的链表里去除（即断开和静态变量first的连接）</li>
-<li>执行thunk的run方法。thunk就是在创建Cleaner对象时传入的回调，在DirectByteBuffer中的实现就是执行unsafe.freeMemory(address)，回收这块堆外内存。<br>此后如果虚拟机再次执行GC，则此Cleaner对象本身再被真正回收。</li>
+<li>执行thunk的run方法。thunk就是在创建Cleaner对象时传入的回调，在DirectByteBuffer中的实现就是执行unsafe.freeMemory(address)，回收这块堆外内存。<br>
+此后如果虚拟机再次执行GC，则此Cleaner对象本身再被真正回收。</li>
 </ul>
 <p>由以上分析可知，小文件上传时，在触发FGC的情况下，泄漏的内存最终是能被回收的</p>
-<h3 id="虚拟机宕机原因"><a href="#虚拟机宕机原因" class="headerlink" title="虚拟机宕机原因"></a>虚拟机宕机原因</h3><p>在上传大文件时，由于每个请求的body（在堆外）要远远大于其在堆内的指针，而如果在堆内没有触发FGC时堆外内存就耗尽了，就会引发虚拟机宕机。当然，对于此种场景，JDK也做了处理。在申请堆外内存时，如果内存不足，会触发System.gc()主动进行FGC。<br>之所以我们系统还是宕机了，是因为开启了-XX:+DisableExplicitGC，导致了System.gc()等于一个空函数。</p>
-<h2 id="如何利用虚引用回收资源"><a href="#如何利用虚引用回收资源" class="headerlink" title="如何利用虚引用回收资源"></a>如何利用虚引用回收资源</h2><p><a href="https://www.dozer.cc/2015/10/phantom-reference.html" target="_blank" rel="noopener">https://www.dozer.cc/2015/10/phantom-reference.html</a><br>参见不使用cleaner回收资源，其实思路和cleaner一样。</p>
+<h3 id="虚拟机宕机原因"><a class="header-anchor" href="#虚拟机宕机原因">¶</a>虚拟机宕机原因</h3>
+<p>在上传大文件时，由于每个请求的body（在堆外）要远远大于其在堆内的指针，而如果在堆内没有触发FGC时堆外内存就耗尽了，就会引发虚拟机宕机。当然，对于此种场景，JDK也做了处理。在申请堆外内存时，如果内存不足，会触发System.gc()主动进行FGC。<br>
+之所以我们系统还是宕机了，是因为开启了-XX:+DisableExplicitGC，导致了System.gc()等于一个空函数。</p>
+<h2 id="如何利用虚引用回收资源"><a class="header-anchor" href="#如何利用虚引用回收资源">¶</a>如何利用虚引用回收资源</h2>
+<p><a href="https://www.dozer.cc/2015/10/phantom-reference.html" target="_blank" rel="noopener">https://www.dozer.cc/2015/10/phantom-reference.html</a><br>
+参见不使用cleaner回收资源，其实思路和cleaner一样。</p>
 
       
 
@@ -401,7 +417,7 @@
                 </span>
                 <span class="tooltip-content">
                     <div class="toc-article">
-                    <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#问题描述"><span class="toc-number">1.</span> <span class="toc-text">问题描述</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#问题解决"><span class="toc-number">2.</span> <span class="toc-text">问题解决</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#问题引申"><span class="toc-number">3.</span> <span class="toc-text">问题引申</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#堆外内存的申请"><span class="toc-number">3.0.1.</span> <span class="toc-text">堆外内存的申请</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#堆外内存的释放"><span class="toc-number">3.0.2.</span> <span class="toc-text">堆外内存的释放</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#虚拟机宕机原因"><span class="toc-number">3.0.3.</span> <span class="toc-text">虚拟机宕机原因</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#如何利用虚引用回收资源"><span class="toc-number">3.1.</span> <span class="toc-text">如何利用虚引用回收资源</span></a></li></ol></li></ol>
+                    <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#null"><span class="toc-number">1.</span> <span class="toc-text">问题描述</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#null"><span class="toc-number">2.</span> <span class="toc-text">问题解决</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#null"><span class="toc-number">3.</span> <span class="toc-text">问题引申</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#堆外内存的申请"><span class="toc-number">3.0.1.</span> <span class="toc-text">¶堆外内存的申请</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#堆外内存的释放"><span class="toc-number">3.0.2.</span> <span class="toc-text">¶堆外内存的释放</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#虚拟机宕机原因"><span class="toc-number">3.0.3.</span> <span class="toc-text">¶虚拟机宕机原因</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#如何利用虚引用回收资源"><span class="toc-number">3.1.</span> <span class="toc-text">¶如何利用虚引用回收资源</span></a></li></ol></li></ol>
                     </div>
                 </span>
             </div>
@@ -511,14 +527,6 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
           <ul class="article-tag-list" q-show="showTags">
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color5">论文研读</a>
-              </li>
-             
-              <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color3">存储</a>
-              </li>
-             
-              <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color4">FMQ</a>
               </li>
              
@@ -527,11 +535,19 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color4">中间件</a>
+                <a href="javascript:void(0)" class="js-tag color5">论文研读</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color3">存储</a>
               </li>
              
               <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color5">java</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color4">中间件</a>
               </li>
              
               <li class="article-tag-list-item">
@@ -551,11 +567,15 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color4">RocketMQ</a>
+              </li>
+             
+              <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color4">jvm</a>
               </li>
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color4">RocketMQ</a>
+                <a href="javascript:void(0)" class="js-tag color4">JVM</a>
               </li>
              
               <li class="article-tag-list-item">
@@ -564,10 +584,6 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
              
               <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color3">计划</a>
-              </li>
-             
-              <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color4">JVM</a>
               </li>
              
               <li class="article-tag-list-item">

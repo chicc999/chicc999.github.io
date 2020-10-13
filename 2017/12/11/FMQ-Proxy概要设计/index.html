@@ -206,41 +206,56 @@
     
     <div class="article-entry" itemprop="articleBody">
       
-        <p><em>FMQ Proxy用来支持多语言接入FMQ，主要功能为在应用层提供HTTP协议到自定义协议的转换</em><br><a id="more"></a></p>
-<h1 id="1-需求背景"><a href="#1-需求背景" class="headerlink" title="1 需求背景"></a>1 需求背景</h1><ul>
+        <p><em>FMQ Proxy用来支持多语言接入FMQ，主要功能为在应用层提供HTTP协议到自定义协议的转换</em></p>
+<a id="more"></a>
+<h1>1 需求背景</h1>
+<ul>
 <li>FMQ目前采用自定义协议，如果要对多语言进行支持，序列化相对复杂。因此需要一个网关来提供Http协议到自定义协议的转换，以方便用户使用多种语言通过Http的方式接入系统。</li>
 <li>同时为了简化客户端编程，需要一个代理来隐藏客户端的路由、重试等操作。</li>
 <li></li>
 </ul>
-<h1 id="2-需求分析"><a href="#2-需求分析" class="headerlink" title="2 需求分析"></a>2 需求分析</h1><h2 id="2-1-详细需求"><a href="#2-1-详细需求" class="headerlink" title="2.1 详细需求"></a>2.1 详细需求</h2><h3 id="2-1-1-验证功能"><a href="#2-1-1-验证功能" class="headerlink" title="2.1.1 验证功能"></a>2.1.1 验证功能</h3><ul>
+<h1>2 需求分析</h1>
+<h2 id="2-1-详细需求"><a class="header-anchor" href="#2-1-详细需求">¶</a>2.1 详细需求</h2>
+<h3 id="2-1-1-验证功能"><a class="header-anchor" href="#2-1-1-验证功能">¶</a>2.1.1 验证功能</h3>
+<ul>
 <li>提供用户合法性验证</li>
 <li>缓存认证结果，避免重复校验</li>
 <li>缓存需要有时效性</li>
 </ul>
-<h3 id="2-1-2-路由"><a href="#2-1-2-路由" class="headerlink" title="2.1.2 路由"></a>2.1.2 路由</h3><ul>
+<h3 id="2-1-2-路由"><a class="header-anchor" href="#2-1-2-路由">¶</a>2.1.2 路由</h3>
+<ul>
 <li>返回结果为用户的生产消费提供第一层路由（即用户端到代理层），以达到代理层可以水平扩展的目的（不更改域名解析的情况下）</li>
 </ul>
-<h3 id="2-1-3-生产"><a href="#2-1-3-生产" class="headerlink" title="2.1.3 生产"></a>2.1.3 生产</h3><ul>
+<h3 id="2-1-3-生产"><a class="header-anchor" href="#2-1-3-生产">¶</a>2.1.3 生产</h3>
+<ul>
 <li>提供消息生产的功能</li>
 <li>提供默认策略，优先向本机房broker生产</li>
 </ul>
-<h3 id="2-1-4-消费"><a href="#2-1-4-消费" class="headerlink" title="2.1.4 消费"></a>2.1.4 消费</h3><ul>
+<h3 id="2-1-4-消费"><a class="header-anchor" href="#2-1-4-消费">¶</a>2.1.4 消费</h3>
+<ul>
 <li>提供消费功能</li>
 <li>消费失败进入重试队列</li>
 <li>消费成功进行ack</li>
 </ul>
-<h3 id="2-1-5-监控"><a href="#2-1-5-监控" class="headerlink" title="2.1.5 监控"></a>2.1.5 监控</h3><ul>
+<h3 id="2-1-5-监控"><a class="header-anchor" href="#2-1-5-监控">¶</a>2.1.5 监控</h3>
+<ul>
 <li>proxy日志级别修改。</li>
 <li>proxy业务级别监控，如流量、生产消费条数等。</li>
 <li>proxy机器级别监控，如进程状态、内存使用、网络IO等。</li>
 </ul>
-<h3 id="2-1-6-报警"><a href="#2-1-6-报警" class="headerlink" title="2.1.6 报警"></a>2.1.6 报警</h3><ul>
+<h3 id="2-1-6-报警"><a class="header-anchor" href="#2-1-6-报警">¶</a>2.1.6 报警</h3>
+<ul>
 <li>对于proxy异常状况进行报警</li>
 </ul>
-<h3 id="2-1-7-安全"><a href="#2-1-7-安全" class="headerlink" title="2.1.7 安全"></a>2.1.7 安全</h3><ul>
+<h3 id="2-1-7-安全"><a class="header-anchor" href="#2-1-7-安全">¶</a>2.1.7 安全</h3>
+<ul>
 <li>Https支持</li>
 </ul>
-<h1 id="3-系统总体设计"><a href="#3-系统总体设计" class="headerlink" title="3 系统总体设计"></a>3 系统总体设计</h1><h1 id="4-系统功能设计"><a href="#4-系统功能设计" class="headerlink" title="4 系统功能设计"></a>4 系统功能设计</h1><h2 id="4-1-协议设计"><a href="#4-1-协议设计" class="headerlink" title="4.1 协议设计"></a>4.1 协议设计</h2><h3 id="4-1-1-URL"><a href="#4-1-1-URL" class="headerlink" title="4.1.1 URL"></a>4.1.1 URL</h3><p>通过HTTP支持验证、生产消息、消费消息等方法，URL格式如下：</p>
+<h1>3 系统总体设计</h1>
+<h1>4 系统功能设计</h1>
+<h2 id="4-1-协议设计"><a class="header-anchor" href="#4-1-协议设计">¶</a>4.1 协议设计</h2>
+<h3 id="4-1-1-URL"><a class="header-anchor" href="#4-1-1-URL">¶</a>4.1.1 URL</h3>
+<p>通过HTTP支持验证、生产消息、消费消息等方法，URL格式如下：</p>
 <p>URL = http://[host]:[port]/[version]/[Method]</p>
 <p>version部分为协议版本号，目前发布的为1.0，支持method:</p>
 <ul>
@@ -248,9 +263,10 @@
 <li>produce</li>
 <li>consume</li>
 <li>ack</li>
-<li>retry </li>
+<li>retry</li>
 </ul>
-<h3 id="4-1-2-Request-Header"><a href="#4-1-2-Request-Header" class="headerlink" title="4.1.2 Request Header"></a>4.1.2 Request Header</h3><p>所有方法均走post请求，header部分值如下：</p>
+<h3 id="4-1-2-Request-Header"><a class="header-anchor" href="#4-1-2-Request-Header">¶</a>4.1.2 Request Header</h3>
+<p>所有方法均走post请求，header部分值如下：</p>
 <table>
 <thead>
 <tr>
@@ -273,7 +289,7 @@
 <tr>
 <td style="text-align:center">Host</td>
 <td style="text-align:center">固定值</td>
-<td style="text-align:left">proxy.fmq.jdfin.com</td>
+<td style="text-align:left"><a href="http://proxy.fmq.jdfin.com" target="_blank" rel="noopener">proxy.fmq.jdfin.com</a></td>
 </tr>
 <tr>
 <td style="text-align:center">Timestamp</td>
@@ -283,10 +299,12 @@
 <tr>
 <td style="text-align:center">token</td>
 <td style="text-align:center">验证的令牌,除了auth方法，其余方法需要带此值</td>
+<td style="text-align:left"></td>
 </tr>
 </tbody>
 </table>
-<h3 id="4-1-3-Request-Body"><a href="#4-1-3-Request-Body" class="headerlink" title="4.1.3 Request Body"></a>4.1.3 Request Body</h3><p>content部分为所需信息的json字符串。</p>
+<h3 id="4-1-3-Request-Body"><a class="header-anchor" href="#4-1-3-Request-Body">¶</a>4.1.3 Request Body</h3>
+<p>content部分为所需信息的json字符串。</p>
 <table>
 <thead>
 <tr>
@@ -319,23 +337,34 @@
 <td style="text-align:center">ack</td>
 <td style="text-align:center">消费成功确认</td>
 <td style="text-align:left"></td>
+<td style="text-align:center"></td>
 </tr>
 <tr>
 <td style="text-align:center">retry</td>
 <td style="text-align:center">消费失败确认</td>
+<td style="text-align:left"></td>
+<td style="text-align:center"></td>
 </tr>
 </tbody>
 </table>
-<h3 id="4-1-4-response"><a href="#4-1-4-response" class="headerlink" title="4.1.4 response"></a>4.1.4 response</h3><h2 id="4-2-验证设计"><a href="#4-2-验证设计" class="headerlink" title="4.2 验证设计"></a>4.2 验证设计</h2><h2 id="4-3-路由设计"><a href="#4-3-路由设计" class="headerlink" title="4.3 路由设计"></a>4.3 路由设计</h2><p>路由设计主要考虑动态分配proxy的流量，一方面要让属于某个主题的流量尽可能集中在某些proxy上，另一方面兼顾到主题流量不均衡，允许特殊规则支持大流量主题。</p>
-<h3 id="4-3-1-普通路由分配规则"><a href="#4-3-1-普通路由分配规则" class="headerlink" title="4.3.1 普通路由分配规则"></a>4.3.1 普通路由分配规则</h3><ul>
+<h3 id="4-1-4-response"><a class="header-anchor" href="#4-1-4-response">¶</a>4.1.4 response</h3>
+<h2 id="4-2-验证设计"><a class="header-anchor" href="#4-2-验证设计">¶</a>4.2 验证设计</h2>
+<h2 id="4-3-路由设计"><a class="header-anchor" href="#4-3-路由设计">¶</a>4.3 路由设计</h2>
+<p>路由设计主要考虑动态分配proxy的流量，一方面要让属于某个主题的流量尽可能集中在某些proxy上，另一方面兼顾到主题流量不均衡，允许特殊规则支持大流量主题。</p>
+<h3 id="4-3-1-普通路由分配规则"><a class="header-anchor" href="#4-3-1-普通路由分配规则">¶</a>4.3.1 普通路由分配规则</h3>
+<ul>
 <li>每个proxy需要绑定若干个业务分组，并可以提供此业务分组所有topic的代理服务</li>
 <li>一个proxy可以代理多个业务分组，一个业务分组也可以被多个proxy代理</li>
 <li>若主题对应业务分组未分配给此proxy代理，则添加按钮控制是否允许提供代理服务</li>
 </ul>
-<h3 id="4-3-2-特殊路由分配规则"><a href="#4-3-2-特殊路由分配规则" class="headerlink" title="4.3.2 特殊路由分配规则"></a>4.3.2 特殊路由分配规则</h3><ul>
+<h3 id="4-3-2-特殊路由分配规则"><a class="header-anchor" href="#4-3-2-特殊路由分配规则">¶</a>4.3.2 特殊路由分配规则</h3>
+<ul>
 <li>指定某个主题、应用或者主题-应用绑定特定proxy,则只返回此proxy</li>
 </ul>
-<h3 id="4-3-3"><a href="#4-3-3" class="headerlink" title="4.3.3"></a>4.3.3</h3><h1 id="5-测试"><a href="#5-测试" class="headerlink" title="5.测试"></a>5.测试</h1><h2 id="5-1-1-验证部分"><a href="#5-1-1-验证部分" class="headerlink" title="5.1.1 验证部分"></a>5.1.1 验证部分</h2><table>
+<h3 id="4-3-3"><a class="header-anchor" href="#4-3-3">¶</a>4.3.3</h3>
+<h1>5.测试</h1>
+<h2 id="5-1-1-验证部分"><a class="header-anchor" href="#5-1-1-验证部分">¶</a>5.1.1 验证部分</h2>
+<table>
 <thead>
 <tr>
 <th style="text-align:left">测试点</th>
@@ -349,81 +378,107 @@
 </tr>
 </tbody>
 </table>
-<h2 id="1-整体架构"><a href="#1-整体架构" class="headerlink" title="1 整体架构"></a>1 整体架构</h2><h2 id="2-协议实现"><a href="#2-协议实现" class="headerlink" title="2 协议实现"></a>2 协议实现</h2><p>RISK_SMS_SEND_TASK_POC    postLoanCloud</p>
-<h3 id="2-1"><a href="#2-1" class="headerlink" title="2.1"></a>2.1</h3><h3 id="2-1-1-auth"><a href="#2-1-1-auth" class="headerlink" title="2.1.1 auth"></a>2.1.1 auth</h3><p>auth方法主要用来进行服务认证。</p>
-<h2 id="3-模块分析"><a href="#3-模块分析" class="headerlink" title="3 模块分析"></a>3 模块分析</h2><h3 id="3-1-验证模块"><a href="#3-1-验证模块" class="headerlink" title="3.1 验证模块"></a>3.1 验证模块</h3><h4 id="auth命令"><a href="#auth命令" class="headerlink" title="auth命令"></a>auth命令</h4><ul>
+<h2 id="1-整体架构"><a class="header-anchor" href="#1-整体架构">¶</a>1 整体架构</h2>
+<h2 id="2-协议实现"><a class="header-anchor" href="#2-协议实现">¶</a>2 协议实现</h2>
+<p>RISK_SMS_SEND_TASK_POC	postLoanCloud</p>
+<h3 id="2-1"><a class="header-anchor" href="#2-1">¶</a>2.1</h3>
+<h3 id="2-1-1-auth"><a class="header-anchor" href="#2-1-1-auth">¶</a>2.1.1 auth</h3>
+<p>auth方法主要用来进行服务认证。</p>
+<h2 id="3-模块分析"><a class="header-anchor" href="#3-模块分析">¶</a>3 模块分析</h2>
+<h3 id="3-1-验证模块"><a class="header-anchor" href="#3-1-验证模块">¶</a>3.1 验证模块</h3>
+<h4 id="auth命令"><a class="header-anchor" href="#auth命令">¶</a>auth命令</h4>
+<ul>
 <li>验证用户名、密码是否合法</li>
 <li>验证主题、app是否为空</li>
-<li>生成tokenMD5(prefix + username + password + app + suffix)）<br>存入redis</li>
+<li>生成tokenMD5(prefix + username + password + app + suffix)）<br>
+存入redis</li>
 <li>返回所有proxy的列表</li>
 </ul>
-<h4 id="put-get-ack-retry命令"><a href="#put-get-ack-retry命令" class="headerlink" title="put/get/ack/retry命令"></a>put/get/ack/retry命令</h4><ul>
+<h4 id="put-get-ack-retry命令"><a class="header-anchor" href="#put-get-ack-retry命令">¶</a>put/get/ack/retry命令</h4>
+<ul>
 <li>验证app是否为authid对应的app</li>
 <li>忽略超级用户user和app的匹配</li>
 </ul>
-<h3 id="3-2-ProxyProducerManager模块"><a href="#3-2-ProxyProducerManager模块" class="headerlink" title="3.2 ProxyProducerManager模块"></a>3.2 ProxyProducerManager模块</h3><ul>
+<h3 id="3-2-ProxyProducerManager模块"><a class="header-anchor" href="#3-2-ProxyProducerManager模块">¶</a>3.2 ProxyProducerManager模块</h3>
+<ul>
 <li>根据topic,app唯一确定ProducerTrace，独享TransportManager</li>
 <li>ProducerTrace熟悉lastTime记录最后一次生产消息的时间</li>
 <li>空闲管理，5min没有消息终止客户端</li>
 </ul>
-<h3 id="3-3-ProxyConsumerManager模块"><a href="#3-3-ProxyConsumerManager模块" class="headerlink" title="3.3 ProxyConsumerManager模块"></a>3.3 ProxyConsumerManager模块</h3><ul>
-<li>根据topic,app唯一确定ConsumerTrace，独享TransportManager <strong><em>存在问题，MessageConsumer本身支持多个topic</em></strong></li>
+<h3 id="3-3-ProxyConsumerManager模块"><a class="header-anchor" href="#3-3-ProxyConsumerManager模块">¶</a>3.3 ProxyConsumerManager模块</h3>
+<ul>
+<li>根据topic,app唯一确定ConsumerTrace，独享TransportManager <em><strong>存在问题，MessageConsumer本身支持多个topic</strong></em></li>
 <li>其余逻辑类似producer</li>
 </ul>
-<h3 id="GroupClient"><a href="#GroupClient" class="headerlink" title="GroupClient"></a>GroupClient</h3><h2 id="问题"><a href="#问题" class="headerlink" title="问题"></a>问题</h2><ol>
-<li><p>返回servers靠配置，如何进行负载均衡</p>
+<h3 id="GroupClient"><a class="header-anchor" href="#GroupClient">¶</a>GroupClient</h3>
+<h2 id="问题"><a class="header-anchor" href="#问题">¶</a>问题</h2>
+<ol>
+<li>
+<p>返回servers靠配置，如何进行负载均衡</p>
 <ul>
 <li>auth用域名访问vip，后端挂所有proxy，验证完毕缓存共享auth信息</li>
 <li>返回所有proxy,固定访问某台/访问域名/自定义策略由用户自己决定</li>
 </ul>
 </li>
-<li><p>机器资源不足</p>
+<li>
+<p>机器资源不足</p>
 <ul>
 <li>虚拟机</li>
 <li>储备机器</li>
 </ul>
 </li>
 </ol>
-<h3 id="transport-层"><a href="#transport-层" class="headerlink" title="transport 层"></a>transport 层</h3><p>关联channel，包括重连，断开等事件的处理(建立物理连接)</p>
-<h3 id="brokerTransport-层"><a href="#brokerTransport-层" class="headerlink" title="brokerTransport 层"></a>brokerTransport 层</h3><ul>
+<h3 id="transport-层"><a class="header-anchor" href="#transport-层">¶</a>transport 层</h3>
+<p>关联channel，包括重连，断开等事件的处理(建立物理连接)</p>
+<h3 id="brokerTransport-层"><a class="header-anchor" href="#brokerTransport-层">¶</a>brokerTransport 层</h3>
+<ul>
 <li>addConnection（建立broker层面的逻辑连接），用户认证</li>
 </ul>
-<h3 id="groupTransport-层"><a href="#groupTransport-层" class="headerlink" title="groupTransport 层"></a>groupTransport 层</h3><ul>
+<h3 id="groupTransport-层"><a class="header-anchor" href="#groupTransport-层">¶</a>groupTransport 层</h3>
+<ul>
 <li>socket存在读写2个通道</li>
 <li>权限为整个group的权限</li>
 </ul>
-<h3 id="MessageProducer-Consumer"><a href="#MessageProducer-Consumer" class="headerlink" title="MessageProducer/Consumer"></a>MessageProducer/Consumer</h3><ul>
+<h3 id="MessageProducer-Consumer"><a class="header-anchor" href="#MessageProducer-Consumer">¶</a>MessageProducer/Consumer</h3>
+<ul>
 <li>缓存是否对某通道进行过add producer/consumer 操作</li>
 <li>关闭时remove所有producer/consumer</li>
 <li>消息出入口</li>
 </ul>
-<h3 id="cluster（group-topic）层"><a href="#cluster（group-topic）层" class="headerlink" title="cluster（group-topic）层"></a>cluster（group-topic）层</h3><ul>
+<h3 id="cluster（group-topic）层"><a class="header-anchor" href="#cluster（group-topic）层">¶</a>cluster（group-topic）层</h3>
+<ul>
 <li>存在权重</li>
 <li>选举group</li>
 </ul>
-<h3 id="broker-zip-变更"><a href="#broker-zip-变更" class="headerlink" title="broker_zip 变更"></a>broker_zip 变更</h3><ul>
-<li>添加新broker<ul>
+<h3 id="broker-zip-变更"><a class="header-anchor" href="#broker-zip-变更">¶</a>broker_zip 变更</h3>
+<ul>
+<li>添加新broker
+<ul>
 <li>判断是否在zk存活列表，在的话新增连接</li>
 <li>判断是否存在此group，不存在则新增</li>
 </ul>
 </li>
-<li>更改原有broker<ul>
+<li>更改原有broker
+<ul>
 <li>通知group变更权限</li>
 </ul>
 </li>
-<li>删除broker<ul>
+<li>删除broker
+<ul>
 <li>通知group变更权限</li>
 <li>移除原有broker</li>
 </ul>
 </li>
 </ul>
-<h2 id="问题-1"><a href="#问题-1" class="headerlink" title="问题"></a>问题</h2><ul>
+<h2 id="问题-v2"><a class="header-anchor" href="#问题-v2">¶</a>问题</h2>
+<ul>
 <li>没有集群信息时，返回code不对</li>
 <li>getMessage messages 为null</li>
 <li>channel中附加信息会不会无限膨胀</li>
 <li>页面查看某个token对应的app</li>
 </ul>
-<h2 id="讨论"><a href="#讨论" class="headerlink" title="讨论"></a>讨论</h2><ul>
+<h2 id="讨论"><a class="header-anchor" href="#讨论">¶</a>讨论</h2>
+<ul>
 <li>验证信息中是否带入topic</li>
 <li>是否返回明确的topic-proxy映射关系，还是合起来一个list</li>
 <li>http业务发生错误（如参数校验失败）响应码是否200</li>
@@ -585,7 +640,7 @@
                 </span>
                 <span class="tooltip-content">
                     <div class="toc-article">
-                    <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#1-需求背景"><span class="toc-number">1.</span> <span class="toc-text">1 需求背景</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#2-需求分析"><span class="toc-number">2.</span> <span class="toc-text">2 需求分析</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#2-1-详细需求"><span class="toc-number">2.1.</span> <span class="toc-text">2.1 详细需求</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-1-验证功能"><span class="toc-number">2.1.1.</span> <span class="toc-text">2.1.1 验证功能</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-2-路由"><span class="toc-number">2.1.2.</span> <span class="toc-text">2.1.2 路由</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-3-生产"><span class="toc-number">2.1.3.</span> <span class="toc-text">2.1.3 生产</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-4-消费"><span class="toc-number">2.1.4.</span> <span class="toc-text">2.1.4 消费</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-5-监控"><span class="toc-number">2.1.5.</span> <span class="toc-text">2.1.5 监控</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-6-报警"><span class="toc-number">2.1.6.</span> <span class="toc-text">2.1.6 报警</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-7-安全"><span class="toc-number">2.1.7.</span> <span class="toc-text">2.1.7 安全</span></a></li></ol></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#3-系统总体设计"><span class="toc-number">3.</span> <span class="toc-text">3 系统总体设计</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#4-系统功能设计"><span class="toc-number">4.</span> <span class="toc-text">4 系统功能设计</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#4-1-协议设计"><span class="toc-number">4.1.</span> <span class="toc-text">4.1 协议设计</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-1-URL"><span class="toc-number">4.1.1.</span> <span class="toc-text">4.1.1 URL</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-2-Request-Header"><span class="toc-number">4.1.2.</span> <span class="toc-text">4.1.2 Request Header</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-3-Request-Body"><span class="toc-number">4.1.3.</span> <span class="toc-text">4.1.3 Request Body</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-4-response"><span class="toc-number">4.1.4.</span> <span class="toc-text">4.1.4 response</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4-2-验证设计"><span class="toc-number">4.2.</span> <span class="toc-text">4.2 验证设计</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4-3-路由设计"><span class="toc-number">4.3.</span> <span class="toc-text">4.3 路由设计</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#4-3-1-普通路由分配规则"><span class="toc-number">4.3.1.</span> <span class="toc-text">4.3.1 普通路由分配规则</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-3-2-特殊路由分配规则"><span class="toc-number">4.3.2.</span> <span class="toc-text">4.3.2 特殊路由分配规则</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-3-3"><span class="toc-number">4.3.3.</span> <span class="toc-text">4.3.3</span></a></li></ol></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#5-测试"><span class="toc-number">5.</span> <span class="toc-text">5.测试</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#5-1-1-验证部分"><span class="toc-number">5.1.</span> <span class="toc-text">5.1.1 验证部分</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#1-整体架构"><span class="toc-number">5.2.</span> <span class="toc-text">1 整体架构</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-协议实现"><span class="toc-number">5.3.</span> <span class="toc-text">2 协议实现</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1"><span class="toc-number">5.3.1.</span> <span class="toc-text">2.1</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-1-auth"><span class="toc-number">5.3.2.</span> <span class="toc-text">2.1.1 auth</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-模块分析"><span class="toc-number">5.4.</span> <span class="toc-text">3 模块分析</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-验证模块"><span class="toc-number">5.4.1.</span> <span class="toc-text">3.1 验证模块</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#auth命令"><span class="toc-number">5.4.1.1.</span> <span class="toc-text">auth命令</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#put-get-ack-retry命令"><span class="toc-number">5.4.1.2.</span> <span class="toc-text">put/get/ack/retry命令</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-ProxyProducerManager模块"><span class="toc-number">5.4.2.</span> <span class="toc-text">3.2 ProxyProducerManager模块</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-ProxyConsumerManager模块"><span class="toc-number">5.4.3.</span> <span class="toc-text">3.3 ProxyConsumerManager模块</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#GroupClient"><span class="toc-number">5.4.4.</span> <span class="toc-text">GroupClient</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#问题"><span class="toc-number">5.5.</span> <span class="toc-text">问题</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#transport-层"><span class="toc-number">5.5.1.</span> <span class="toc-text">transport 层</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#brokerTransport-层"><span class="toc-number">5.5.2.</span> <span class="toc-text">brokerTransport 层</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#groupTransport-层"><span class="toc-number">5.5.3.</span> <span class="toc-text">groupTransport 层</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#MessageProducer-Consumer"><span class="toc-number">5.5.4.</span> <span class="toc-text">MessageProducer/Consumer</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#cluster（group-topic）层"><span class="toc-number">5.5.5.</span> <span class="toc-text">cluster（group-topic）层</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#broker-zip-变更"><span class="toc-number">5.5.6.</span> <span class="toc-text">broker_zip 变更</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#问题-1"><span class="toc-number">5.6.</span> <span class="toc-text">问题</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#讨论"><span class="toc-number">5.7.</span> <span class="toc-text">讨论</span></a></li></ol></li></ol>
+                    <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#null"><span class="toc-number">1.</span> <span class="toc-text">1 需求背景</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#null"><span class="toc-number">2.</span> <span class="toc-text">2 需求分析</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#2-1-详细需求"><span class="toc-number">2.1.</span> <span class="toc-text">¶2.1 详细需求</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-1-验证功能"><span class="toc-number">2.1.1.</span> <span class="toc-text">¶2.1.1 验证功能</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-2-路由"><span class="toc-number">2.1.2.</span> <span class="toc-text">¶2.1.2 路由</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-3-生产"><span class="toc-number">2.1.3.</span> <span class="toc-text">¶2.1.3 生产</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-4-消费"><span class="toc-number">2.1.4.</span> <span class="toc-text">¶2.1.4 消费</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-5-监控"><span class="toc-number">2.1.5.</span> <span class="toc-text">¶2.1.5 监控</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-6-报警"><span class="toc-number">2.1.6.</span> <span class="toc-text">¶2.1.6 报警</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-7-安全"><span class="toc-number">2.1.7.</span> <span class="toc-text">¶2.1.7 安全</span></a></li></ol></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#null"><span class="toc-number">3.</span> <span class="toc-text">3 系统总体设计</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#null"><span class="toc-number">4.</span> <span class="toc-text">4 系统功能设计</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#4-1-协议设计"><span class="toc-number">4.1.</span> <span class="toc-text">¶4.1 协议设计</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-1-URL"><span class="toc-number">4.1.1.</span> <span class="toc-text">¶4.1.1 URL</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-2-Request-Header"><span class="toc-number">4.1.2.</span> <span class="toc-text">¶4.1.2 Request Header</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-3-Request-Body"><span class="toc-number">4.1.3.</span> <span class="toc-text">¶4.1.3 Request Body</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-4-response"><span class="toc-number">4.1.4.</span> <span class="toc-text">¶4.1.4 response</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4-2-验证设计"><span class="toc-number">4.2.</span> <span class="toc-text">¶4.2 验证设计</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4-3-路由设计"><span class="toc-number">4.3.</span> <span class="toc-text">¶4.3 路由设计</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#4-3-1-普通路由分配规则"><span class="toc-number">4.3.1.</span> <span class="toc-text">¶4.3.1 普通路由分配规则</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-3-2-特殊路由分配规则"><span class="toc-number">4.3.2.</span> <span class="toc-text">¶4.3.2 特殊路由分配规则</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-3-3"><span class="toc-number">4.3.3.</span> <span class="toc-text">¶4.3.3</span></a></li></ol></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#null"><span class="toc-number">5.</span> <span class="toc-text">5.测试</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#5-1-1-验证部分"><span class="toc-number">5.1.</span> <span class="toc-text">¶5.1.1 验证部分</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#1-整体架构"><span class="toc-number">5.2.</span> <span class="toc-text">¶1 整体架构</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-协议实现"><span class="toc-number">5.3.</span> <span class="toc-text">¶2 协议实现</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1"><span class="toc-number">5.3.1.</span> <span class="toc-text">¶2.1</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-1-auth"><span class="toc-number">5.3.2.</span> <span class="toc-text">¶2.1.1 auth</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-模块分析"><span class="toc-number">5.4.</span> <span class="toc-text">¶3 模块分析</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-验证模块"><span class="toc-number">5.4.1.</span> <span class="toc-text">¶3.1 验证模块</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#auth命令"><span class="toc-number">5.4.1.1.</span> <span class="toc-text">¶auth命令</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#put-get-ack-retry命令"><span class="toc-number">5.4.1.2.</span> <span class="toc-text">¶put/get/ack/retry命令</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-ProxyProducerManager模块"><span class="toc-number">5.4.2.</span> <span class="toc-text">¶3.2 ProxyProducerManager模块</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-ProxyConsumerManager模块"><span class="toc-number">5.4.3.</span> <span class="toc-text">¶3.3 ProxyConsumerManager模块</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#GroupClient"><span class="toc-number">5.4.4.</span> <span class="toc-text">¶GroupClient</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#问题"><span class="toc-number">5.5.</span> <span class="toc-text">¶问题</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#transport-层"><span class="toc-number">5.5.1.</span> <span class="toc-text">¶transport 层</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#brokerTransport-层"><span class="toc-number">5.5.2.</span> <span class="toc-text">¶brokerTransport 层</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#groupTransport-层"><span class="toc-number">5.5.3.</span> <span class="toc-text">¶groupTransport 层</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#MessageProducer-Consumer"><span class="toc-number">5.5.4.</span> <span class="toc-text">¶MessageProducer/Consumer</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#cluster（group-topic）层"><span class="toc-number">5.5.5.</span> <span class="toc-text">¶cluster（group-topic）层</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#broker-zip-变更"><span class="toc-number">5.5.6.</span> <span class="toc-text">¶broker_zip 变更</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#问题-v2"><span class="toc-number">5.6.</span> <span class="toc-text">¶问题</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#讨论"><span class="toc-number">5.7.</span> <span class="toc-text">¶讨论</span></a></li></ol></li></ol>
                     </div>
                 </span>
             </div>
@@ -742,14 +797,6 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
           <ul class="article-tag-list" q-show="showTags">
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color5">论文研读</a>
-              </li>
-             
-              <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color3">存储</a>
-              </li>
-             
-              <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color4">FMQ</a>
               </li>
              
@@ -758,11 +805,19 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color4">中间件</a>
+                <a href="javascript:void(0)" class="js-tag color5">论文研读</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color3">存储</a>
               </li>
              
               <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color5">java</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color4">中间件</a>
               </li>
              
               <li class="article-tag-list-item">
@@ -782,11 +837,15 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color4">RocketMQ</a>
+              </li>
+             
+              <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color4">jvm</a>
               </li>
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color4">RocketMQ</a>
+                <a href="javascript:void(0)" class="js-tag color4">JVM</a>
               </li>
              
               <li class="article-tag-list-item">
@@ -795,10 +854,6 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
              
               <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color3">计划</a>
-              </li>
-             
-              <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color4">JVM</a>
               </li>
              
               <li class="article-tag-list-item">

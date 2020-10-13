@@ -208,55 +208,78 @@
     
     <div class="article-entry" itemprop="articleBody">
       
-        <p><em>本文简要归纳java的类加载过程，介绍类加载器，以及怎样破坏类加载器的双亲委派模型</em><br><a id="more"></a></p>
-<h1 id="类加载时机"><a href="#类加载时机" class="headerlink" title="类加载时机"></a>类加载时机</h1><h1 id="类加载过程"><a href="#类加载过程" class="headerlink" title="类加载过程"></a>类加载过程</h1><h1 id="类加载器"><a href="#类加载器" class="headerlink" title="类加载器"></a>类加载器</h1><p>类加载阶段需要“通过一个类的全限定名来获取描述此类的二进制字节流”，这个动作的实现代码就是类加载器。这个动作放在Java虚拟机外部实现，以便让程序自己决定如何获取所需要的类。</p>
-<h2 id="类与类加载器"><a href="#类与类加载器" class="headerlink" title="类与类加载器"></a>类与类加载器</h2><ul>
+        <p><em>本文简要归纳java的类加载过程，介绍类加载器，以及怎样破坏类加载器的双亲委派模型</em></p>
+<a id="more"></a>
+<h1>类加载时机</h1>
+<h1>类加载过程</h1>
+<h1>类加载器</h1>
+<p>类加载阶段需要“通过一个类的全限定名来获取描述此类的二进制字节流”，这个动作的实现代码就是类加载器。这个动作放在Java虚拟机外部实现，以便让程序自己决定如何获取所需要的类。</p>
+<h2 id="类与类加载器"><a class="header-anchor" href="#类与类加载器">¶</a>类与类加载器</h2>
+<ul>
 <li>类在Java虚拟机中的唯一性由类加载器和这个类本身一同确立。</li>
 <li>比较两个类（equals，isAssignableFrom,isInstance），要在这两个类是同一个类加载器加载的情况下才有意义。</li>
 </ul>
-<h2 id="类加载器类型"><a href="#类加载器类型" class="headerlink" title="类加载器类型"></a>类加载器类型</h2><h3 id="启动类加载器-BootstrapClassLoader"><a href="#启动类加载器-BootstrapClassLoader" class="headerlink" title="启动类加载器(BootstrapClassLoader)"></a>启动类加载器(BootstrapClassLoader)</h3><ul>
+<h2 id="类加载器类型"><a class="header-anchor" href="#类加载器类型">¶</a>类加载器类型</h2>
+<h3 id="启动类加载器-BootstrapClassLoader"><a class="header-anchor" href="#启动类加载器-BootstrapClassLoader">¶</a>启动类加载器(BootstrapClassLoader)</h3>
+<ul>
 <li>负责加载存放在 &lt;JAVA_HOME&gt;\lib下，或被 -Xbootclasspath参数指定的路径中的，并且能被虚拟机识别的类库（如rt.jar）。</li>
 <li>启动类加载器是无法被Java程序直接引用。</li>
 </ul>
-<h3 id="扩展类加载器（ExtensionClassLoader）"><a href="#扩展类加载器（ExtensionClassLoader）" class="headerlink" title="扩展类加载器（ExtensionClassLoader）"></a>扩展类加载器（ExtensionClassLoader）</h3><ul>
+<h3 id="扩展类加载器（ExtensionClassLoader）"><a class="header-anchor" href="#扩展类加载器（ExtensionClassLoader）">¶</a>扩展类加载器（ExtensionClassLoader）</h3>
+<ul>
 <li>由 sun.misc.Launcher$ExtClassLoader实现，它负责加载 &lt;JAVA_HOME&gt;\lib\ext目录中，或者由 java.ext.dirs系统变量指定的路径中的所有类库（如javax.开头的类）</li>
 <li>开发者可以直接使用扩展类加载器。</li>
 </ul>
-<h3 id="应用程序类加载器-ApplicationClassLoader"><a href="#应用程序类加载器-ApplicationClassLoader" class="headerlink" title="应用程序类加载器(ApplicationClassLoader)"></a>应用程序类加载器(ApplicationClassLoader)</h3><ul>
+<h3 id="应用程序类加载器-ApplicationClassLoader"><a class="header-anchor" href="#应用程序类加载器-ApplicationClassLoader">¶</a>应用程序类加载器(ApplicationClassLoader)</h3>
+<ul>
 <li>由 sun.misc.Launcher$AppClassLoader来实现，它负责加载用户类路径（ClassPath）所指定的类，开发者可以直接使用该类加载器</li>
 <li>如果应用程序中没有自定义过自己的类加载器，一般情况下这个就是程序中默认的类加载器</li>
 <li>ClassLoader中getSystemClassLoader()的返回值</li>
 </ul>
-<h3 id="自定义类加载器"><a href="#自定义类加载器" class="headerlink" title="自定义类加载器"></a>自定义类加载器</h3><p>如有必要，可以自定义类加载器。例如从网络上接收一段字节流，以实现远程执行代码的功能。</p>
-<h2 id="双亲委派模型"><a href="#双亲委派模型" class="headerlink" title="双亲委派模型"></a>双亲委派模型</h2><p><img src="http://cyblog.oss-cn-hangzhou.aliyuncs.com/classLoader/%E5%8F%8C%E4%BA%B2%E5%A7%94%E6%B4%BE.png" alt="双亲委派"></p>
+<h3 id="自定义类加载器"><a class="header-anchor" href="#自定义类加载器">¶</a>自定义类加载器</h3>
+<p>如有必要，可以自定义类加载器。例如从网络上接收一段字节流，以实现远程执行代码的功能。</p>
+<h2 id="双亲委派模型"><a class="header-anchor" href="#双亲委派模型">¶</a>双亲委派模型</h2>
+<p><img src="http://cyblog.oss-cn-hangzhou.aliyuncs.com/classLoader/%E5%8F%8C%E4%BA%B2%E5%A7%94%E6%B4%BE.png" alt="双亲委派"></p>
 <p>双亲委派模型如图所示，除了顶层的启动类加载器以外，其余的所有类加载器都应当有自己的父类加载器。</p>
-<h3 id="工作流程"><a href="#工作流程" class="headerlink" title="工作流程"></a>工作流程</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">protected</span> Class&lt;?&gt; loadClass(String name, <span class="keyword">boolean</span> resolve)</span><br><span class="line">    <span class="keyword">throws</span> ClassNotFoundException</span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">synchronized</span> (getClassLoadingLock(name)) &#123;</span><br><span class="line">        <span class="comment">// 判断类是否已经被加载</span></span><br><span class="line">        Class&lt;?&gt; c = findLoadedClass(name);</span><br><span class="line">        <span class="keyword">if</span> (c == <span class="keyword">null</span>) &#123;</span><br><span class="line">            <span class="keyword">long</span> t0 = System.nanoTime();</span><br><span class="line">            <span class="keyword">try</span> &#123;</span><br><span class="line">                <span class="keyword">if</span> (parent != <span class="keyword">null</span>) &#123;</span><br><span class="line">                <span class="comment">//如果存在父类加载器，就委派给父类加载器加载</span></span><br><span class="line">                    c = parent.loadClass(name, <span class="keyword">false</span>);</span><br><span class="line">                &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                <span class="comment">//不存在父类加载器，交给启动类加载器</span></span><br><span class="line">                    c = findBootstrapClassOrNull(name);</span><br><span class="line">                &#125;</span><br><span class="line">            &#125; <span class="keyword">catch</span> (ClassNotFoundException e) &#123;</span><br><span class="line">                <span class="comment">// ClassNotFoundException thrown if class not found</span></span><br><span class="line">                <span class="comment">// from the non-null parent class loader</span></span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            <span class="keyword">if</span> (c == <span class="keyword">null</span>) &#123;</span><br><span class="line">                <span class="keyword">long</span> t1 = System.nanoTime();</span><br><span class="line">                <span class="comment">// 如果父类加载器和启动类加载器都不能完成加载任务，调用自身的加载功能</span></span><br><span class="line">                c = findClass(name);</span><br><span class="line"></span><br><span class="line">                <span class="comment">// this is the defining class loader; record the stats</span></span><br><span class="line">                sun.misc.PerfCounter.getParentDelegationTime().addTime(t1 - t0);</span><br><span class="line">                sun.misc.PerfCounter.getFindClassTime().addElapsedTimeFrom(t1);</span><br><span class="line">                sun.misc.PerfCounter.getFindClasses().increment();</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">if</span> (resolve) &#123;</span><br><span class="line">        <span class="comment">//如果需要装入此类引用的其它类</span></span><br><span class="line">            resolveClass(c);</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> c;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="工作流程"><a class="header-anchor" href="#工作流程">¶</a>工作流程</h3>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">protected</span> Class&lt;?&gt; loadClass(String name, <span class="keyword">boolean</span> resolve)</span><br><span class="line">    <span class="keyword">throws</span> ClassNotFoundException</span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">synchronized</span> (getClassLoadingLock(name)) &#123;</span><br><span class="line">        <span class="comment">// 判断类是否已经被加载</span></span><br><span class="line">        Class&lt;?&gt; c = findLoadedClass(name);</span><br><span class="line">        <span class="keyword">if</span> (c == <span class="keyword">null</span>) &#123;</span><br><span class="line">            <span class="keyword">long</span> t0 = System.nanoTime();</span><br><span class="line">            <span class="keyword">try</span> &#123;</span><br><span class="line">                <span class="keyword">if</span> (parent != <span class="keyword">null</span>) &#123;</span><br><span class="line">                <span class="comment">//如果存在父类加载器，就委派给父类加载器加载</span></span><br><span class="line">                    c = parent.loadClass(name, <span class="keyword">false</span>);</span><br><span class="line">                &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                <span class="comment">//不存在父类加载器，交给启动类加载器</span></span><br><span class="line">                    c = findBootstrapClassOrNull(name);</span><br><span class="line">                &#125;</span><br><span class="line">            &#125; <span class="keyword">catch</span> (ClassNotFoundException e) &#123;</span><br><span class="line">                <span class="comment">// ClassNotFoundException thrown if class not found</span></span><br><span class="line">                <span class="comment">// from the non-null parent class loader</span></span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            <span class="keyword">if</span> (c == <span class="keyword">null</span>) &#123;</span><br><span class="line">                <span class="keyword">long</span> t1 = System.nanoTime();</span><br><span class="line">                <span class="comment">// 如果父类加载器和启动类加载器都不能完成加载任务，调用自身的加载功能</span></span><br><span class="line">                c = findClass(name);</span><br><span class="line"></span><br><span class="line">                <span class="comment">// this is the defining class loader; record the stats</span></span><br><span class="line">                sun.misc.PerfCounter.getParentDelegationTime().addTime(t1 - t0);</span><br><span class="line">                sun.misc.PerfCounter.getFindClassTime().addElapsedTimeFrom(t1);</span><br><span class="line">                sun.misc.PerfCounter.getFindClasses().increment();</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">if</span> (resolve) &#123;</span><br><span class="line">        <span class="comment">//如果需要装入此类引用的其它类</span></span><br><span class="line">            resolveClass(c);</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> c;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 <p>类加载过程见代码中注释，由此可以看出流程：</p>
 <ul>
 <li>如果一个类加载器收到了类加载的请求，它首先不会自己去尝试加载这个类，而是把请求委托给父加载器去完成，依次向上，因此，所有的类加载请求最终都应该被传递到顶层的启动类加载器中。</li>
 <li>当不存在父类加载器时，调用启动类加载器完成加载</li>
 <li>当父加载器/启动类加载器在它的搜索范围中没有找到所需的类时，即无法完成该加载，子加载器才会尝试自己去加载该类。</li>
 </ul>
-<h4 id="findLoadedClass"><a href="#findLoadedClass" class="headerlink" title="findLoadedClass"></a>findLoadedClass</h4><p>检查将要被加载的类是否已经存在。每个类加载器都维护有自己的一份已加载类名字空间，其中不能出现两个同名的类。凡是通过该类加载器加载的类，无论是自己加载的还是委托给其它类加载器加载的，都保存在自己的名字空间中。如果该名字空间中存在指定的类，就返回给类的引用，否则就返回 null。</p>
-<h4 id="resolveClass"><a href="#resolveClass" class="headerlink" title="resolveClass"></a>resolveClass</h4><p>调用此方法，装入指定的类引用的所有其他类。</p>
-<h3 id="双亲委派的意义"><a href="#双亲委派的意义" class="headerlink" title="双亲委派的意义"></a>双亲委派的意义</h3><p>保证系统类在各种类加载器环境中都会被分配给固定的加载器，是同一个类。</p>
-<h2 id="自定义类加载器-1"><a href="#自定义类加载器-1" class="headerlink" title="自定义类加载器"></a>自定义类加载器</h2><p>通常情况下，我们都是直接使用系统类加载器。但是，有的时候，我们也需要自定义类加载器。比如应用是通过网络来传输 Java类的字节码。<br>自定义类加载器一般都是继承自 ClassLoader类，但是为了不破坏双亲委派的模型，更推荐重写 findClass 方法，这样就可以保证新写出的类加载器是符合双亲委派的规则的。本文最后会给出一个实现的例子。</p>
-<h2 id="破坏双亲委派模型"><a href="#破坏双亲委派模型" class="headerlink" title="破坏双亲委派模型"></a>破坏双亲委派模型</h2><p>双亲委派模型并不是一个强制性的约束，双亲委派采用组合而非继承实现，以保证用户可以在需要的时候将父类置为Null而破坏双亲委派模型。<br>以下行为就会对其进行破坏：</p>
+<h4 id="findLoadedClass"><a class="header-anchor" href="#findLoadedClass">¶</a>findLoadedClass</h4>
+<p>检查将要被加载的类是否已经存在。每个类加载器都维护有自己的一份已加载类名字空间，其中不能出现两个同名的类。凡是通过该类加载器加载的类，无论是自己加载的还是委托给其它类加载器加载的，都保存在自己的名字空间中。如果该名字空间中存在指定的类，就返回给类的引用，否则就返回 null。</p>
+<h4 id="resolveClass"><a class="header-anchor" href="#resolveClass">¶</a>resolveClass</h4>
+<p>调用此方法，装入指定的类引用的所有其他类。</p>
+<h3 id="双亲委派的意义"><a class="header-anchor" href="#双亲委派的意义">¶</a>双亲委派的意义</h3>
+<p>保证系统类在各种类加载器环境中都会被分配给固定的加载器，是同一个类。</p>
+<h2 id="自定义类加载器-v2"><a class="header-anchor" href="#自定义类加载器-v2">¶</a>自定义类加载器</h2>
+<p>通常情况下，我们都是直接使用系统类加载器。但是，有的时候，我们也需要自定义类加载器。比如应用是通过网络来传输 Java类的字节码。<br>
+自定义类加载器一般都是继承自 ClassLoader类，但是为了不破坏双亲委派的模型，更推荐重写 findClass 方法，这样就可以保证新写出的类加载器是符合双亲委派的规则的。本文最后会给出一个实现的例子。</p>
+<h2 id="破坏双亲委派模型"><a class="header-anchor" href="#破坏双亲委派模型">¶</a>破坏双亲委派模型</h2>
+<p>双亲委派模型并不是一个强制性的约束，双亲委派采用组合而非继承实现，以保证用户可以在需要的时候将父类置为Null而破坏双亲委派模型。<br>
+以下行为就会对其进行破坏：</p>
 <ul>
 <li>重写类加载器loadClass()方法,覆盖双亲委派逻辑</li>
 <li>父类加载器请求子类去完成加载动作（如SPI）</li>
 <li>对程序动态性的追求（如代码热替换、热部署）</li>
 </ul>
 <p>其中第一个显而易见，我们重点来谈谈另外两点的应用。</p>
-<h3 id="SPI"><a href="#SPI" class="headerlink" title="SPI"></a>SPI</h3><p>Java源码中涉及SPI加载的动作，都应该由启动类加载器去加载。<br>以JDBC为例，接口Driver定义在rt.jar中，由DriverManager的loadInitialDrivers方法进行加载。代码如下。</p>
+<h3 id="SPI"><a class="header-anchor" href="#SPI">¶</a>SPI</h3>
+<p>Java源码中涉及SPI加载的动作，都应该由启动类加载器去加载。<br>
+以JDBC为例，接口Driver定义在rt.jar中，由DriverManager的loadInitialDrivers方法进行加载。代码如下。</p>
 <figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">loadInitialDrivers</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        </span><br><span class="line">        ……</span><br><span class="line"></span><br><span class="line">        AccessController.doPrivileged(<span class="keyword">new</span> PrivilegedAction&lt;Void&gt;() &#123;</span><br><span class="line">            <span class="function"><span class="keyword">public</span> Void <span class="title">run</span><span class="params">()</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">                ServiceLoader&lt;Driver&gt; loadedDrivers = ServiceLoader.load(Driver<span class="class">.<span class="keyword">class</span>)</span>;</span><br><span class="line">                Iterator&lt;Driver&gt; driversIterator = loadedDrivers.iterator();</span><br><span class="line"></span><br><span class="line">              </span><br><span class="line">                <span class="keyword">try</span>&#123;</span><br><span class="line">                    <span class="keyword">while</span>(driversIterator.hasNext()) &#123;</span><br><span class="line">                        driversIterator.next();</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125; <span class="keyword">catch</span>(Throwable t) &#123;</span><br><span class="line">                <span class="comment">// Do nothing</span></span><br><span class="line">                &#125;</span><br><span class="line">                <span class="keyword">return</span> <span class="keyword">null</span>;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;);</span><br><span class="line"></span><br><span class="line">       ……</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
 <p>由于Drive接口由用户实现，DriverManager由启动类加载器加载，启动类加载器不“认识“这些由用户实现的类,无法加载。所以我们继续看ServiceLoader类load代码的实现。</p>
 <figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">static</span> &lt;S&gt; <span class="function">ServiceLoader&lt;S&gt; <span class="title">load</span><span class="params">(Class&lt;S&gt; service)</span> </span>&#123;</span><br><span class="line">    ClassLoader cl = Thread.currentThread().getContextClassLoader();</span><br><span class="line">    <span class="keyword">return</span> ServiceLoader.load(service, cl);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 <p>在load（）方法中，调用了线程上下文加载器进行加载。线程上下文类加载器可以由用户自己设置。如果不设置的话，我们继续看方法的调用。</p>
 <figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">static</span> &lt;S&gt; <span class="function">ServiceLoader&lt;S&gt; <span class="title">load</span><span class="params">(Class&lt;S&gt; service,</span></span></span><br><span class="line"><span class="function"><span class="params">                                           ClassLoader loader)</span></span></span><br><span class="line"><span class="function">   </span>&#123;</span><br><span class="line">       <span class="keyword">return</span> <span class="keyword">new</span> ServiceLoader&lt;&gt;(service, loader);</span><br><span class="line">   &#125;</span><br><span class="line">   </span><br><span class="line">   <span class="function"><span class="keyword">private</span> <span class="title">ServiceLoader</span><span class="params">(Class&lt;S&gt; svc, ClassLoader cl)</span> </span>&#123;</span><br><span class="line">       service = Objects.requireNonNull(svc, <span class="string">"Service interface cannot be null"</span>);</span><br><span class="line">       loader = (cl == <span class="keyword">null</span>) ? ClassLoader.getSystemClassLoader() : cl;</span><br><span class="line">       acc = (System.getSecurityManager() != <span class="keyword">null</span>) ? AccessController.getContext() : <span class="keyword">null</span>;</span><br><span class="line">       reload();</span><br><span class="line">   &#125;</span><br></pre></td></tr></table></figure>
 <p>如果没有设置线程上下文加载器，最终通过getSystemClassLoader()获取应用程序类加载器进行加载。而用户实现的代码，默认也是由此加载器进行加载。</p>
-<h3 id="OSGI模块化热部署"><a href="#OSGI模块化热部署" class="headerlink" title="OSGI模块化热部署"></a>OSGI模块化热部署</h3><p>TODO</p>
-<h2 id="实现远程执行功能"><a href="#实现远程执行功能" class="headerlink" title="实现远程执行功能"></a>实现远程执行功能</h2>
+<h3 id="OSGI模块化热部署"><a class="header-anchor" href="#OSGI模块化热部署">¶</a>OSGI模块化热部署</h3>
+<p>TODO</p>
+<h2 id="实现远程执行功能"><a class="header-anchor" href="#实现远程执行功能">¶</a>实现远程执行功能</h2>
+
       
 
       
@@ -413,7 +436,7 @@
                 </span>
                 <span class="tooltip-content">
                     <div class="toc-article">
-                    <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#类加载时机"><span class="toc-number">1.</span> <span class="toc-text">类加载时机</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#类加载过程"><span class="toc-number">2.</span> <span class="toc-text">类加载过程</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#类加载器"><span class="toc-number">3.</span> <span class="toc-text">类加载器</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#类与类加载器"><span class="toc-number">3.1.</span> <span class="toc-text">类与类加载器</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#类加载器类型"><span class="toc-number">3.2.</span> <span class="toc-text">类加载器类型</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#启动类加载器-BootstrapClassLoader"><span class="toc-number">3.2.1.</span> <span class="toc-text">启动类加载器(BootstrapClassLoader)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#扩展类加载器（ExtensionClassLoader）"><span class="toc-number">3.2.2.</span> <span class="toc-text">扩展类加载器（ExtensionClassLoader）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#应用程序类加载器-ApplicationClassLoader"><span class="toc-number">3.2.3.</span> <span class="toc-text">应用程序类加载器(ApplicationClassLoader)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#自定义类加载器"><span class="toc-number">3.2.4.</span> <span class="toc-text">自定义类加载器</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#双亲委派模型"><span class="toc-number">3.3.</span> <span class="toc-text">双亲委派模型</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#工作流程"><span class="toc-number">3.3.1.</span> <span class="toc-text">工作流程</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#findLoadedClass"><span class="toc-number">3.3.1.1.</span> <span class="toc-text">findLoadedClass</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#resolveClass"><span class="toc-number">3.3.1.2.</span> <span class="toc-text">resolveClass</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#双亲委派的意义"><span class="toc-number">3.3.2.</span> <span class="toc-text">双亲委派的意义</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#自定义类加载器-1"><span class="toc-number">3.4.</span> <span class="toc-text">自定义类加载器</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#破坏双亲委派模型"><span class="toc-number">3.5.</span> <span class="toc-text">破坏双亲委派模型</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#SPI"><span class="toc-number">3.5.1.</span> <span class="toc-text">SPI</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#OSGI模块化热部署"><span class="toc-number">3.5.2.</span> <span class="toc-text">OSGI模块化热部署</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#实现远程执行功能"><span class="toc-number">3.6.</span> <span class="toc-text">实现远程执行功能</span></a></li></ol></li></ol>
+                    <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#null"><span class="toc-number">1.</span> <span class="toc-text">类加载时机</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#null"><span class="toc-number">2.</span> <span class="toc-text">类加载过程</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#null"><span class="toc-number">3.</span> <span class="toc-text">类加载器</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#类与类加载器"><span class="toc-number">3.1.</span> <span class="toc-text">¶类与类加载器</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#类加载器类型"><span class="toc-number">3.2.</span> <span class="toc-text">¶类加载器类型</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#启动类加载器-BootstrapClassLoader"><span class="toc-number">3.2.1.</span> <span class="toc-text">¶启动类加载器(BootstrapClassLoader)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#扩展类加载器（ExtensionClassLoader）"><span class="toc-number">3.2.2.</span> <span class="toc-text">¶扩展类加载器（ExtensionClassLoader）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#应用程序类加载器-ApplicationClassLoader"><span class="toc-number">3.2.3.</span> <span class="toc-text">¶应用程序类加载器(ApplicationClassLoader)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#自定义类加载器"><span class="toc-number">3.2.4.</span> <span class="toc-text">¶自定义类加载器</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#双亲委派模型"><span class="toc-number">3.3.</span> <span class="toc-text">¶双亲委派模型</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#工作流程"><span class="toc-number">3.3.1.</span> <span class="toc-text">¶工作流程</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#findLoadedClass"><span class="toc-number">3.3.1.1.</span> <span class="toc-text">¶findLoadedClass</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#resolveClass"><span class="toc-number">3.3.1.2.</span> <span class="toc-text">¶resolveClass</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#双亲委派的意义"><span class="toc-number">3.3.2.</span> <span class="toc-text">¶双亲委派的意义</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#自定义类加载器-v2"><span class="toc-number">3.4.</span> <span class="toc-text">¶自定义类加载器</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#破坏双亲委派模型"><span class="toc-number">3.5.</span> <span class="toc-text">¶破坏双亲委派模型</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#SPI"><span class="toc-number">3.5.1.</span> <span class="toc-text">¶SPI</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#OSGI模块化热部署"><span class="toc-number">3.5.2.</span> <span class="toc-text">¶OSGI模块化热部署</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#实现远程执行功能"><span class="toc-number">3.6.</span> <span class="toc-text">¶实现远程执行功能</span></a></li></ol></li></ol>
                     </div>
                 </span>
             </div>
@@ -523,14 +546,6 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
           <ul class="article-tag-list" q-show="showTags">
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color5">论文研读</a>
-              </li>
-             
-              <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color3">存储</a>
-              </li>
-             
-              <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color4">FMQ</a>
               </li>
              
@@ -539,11 +554,19 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color4">中间件</a>
+                <a href="javascript:void(0)" class="js-tag color5">论文研读</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color3">存储</a>
               </li>
              
               <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color5">java</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color4">中间件</a>
               </li>
              
               <li class="article-tag-list-item">
@@ -563,11 +586,15 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color4">RocketMQ</a>
+              </li>
+             
+              <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color4">jvm</a>
               </li>
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color4">RocketMQ</a>
+                <a href="javascript:void(0)" class="js-tag color4">JVM</a>
               </li>
              
               <li class="article-tag-list-item">
@@ -576,10 +603,6 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
              
               <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color3">计划</a>
-              </li>
-             
-              <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color4">JVM</a>
               </li>
              
               <li class="article-tag-list-item">

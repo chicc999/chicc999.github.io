@@ -210,19 +210,29 @@
     
     <div class="article-entry" itemprop="articleBody">
       
-        <p><em>事务消息是指帮用户实现类似XA的分布式事务功能。</em><br><a id="more"></a></p>
-<h1 id="1-概述"><a href="#1-概述" class="headerlink" title="1 概述"></a>1 概述</h1><h2 id="1-1-分布式事务"><a href="#1-1-分布式事务" class="headerlink" title="1.1 分布式事务"></a>1.1 分布式事务</h2><p>如果事务的参与者、支持事务的服务器及资源分别位于不同的分布式系统的不同节点之上，那就称为分布式事务。一个事务可能由很多操作构成，这些小的操作分布在不同的服务器上，且属于不同的应用，分布式事务需要保证这些小操作要么全部成功，要么全部失败。</p>
-<h2 id="1-2-产生"><a href="#1-2-产生" class="headerlink" title="1.2 产生"></a>1.2 产生</h2><p>分布式事务的核心在于保证不同系统的数据一致性。比较应用SOA化以后，各个模块都有自己的数据库。分布式事务就是保证不同数据库的数据一致性。</p>
-<h2 id="1-3-解决方案"><a href="#1-3-解决方案" class="headerlink" title="1.3 解决方案"></a>1.3 解决方案</h2><p>所有的方案基本都是2PC的变型与增强，先了解下2PC的工程实践。<a href="https://zhuanlan.zhihu.com/p/22594180" target="_blank" rel="noopener">两阶段提交的工程实践</a>。</p>
-<h3 id="1-3-1-X-Open-DTP模型"><a href="#1-3-1-X-Open-DTP模型" class="headerlink" title="1.3.1 X/Open DTP模型"></a>1.3.1 X/Open DTP模型</h3><p>此方案主要问题是协议和实现都比较复杂，且效率较低，不适合高并发场景。</p>
-<h3 id="1-3-2-eBay-事件队列方案——最终一致性"><a href="#1-3-2-eBay-事件队列方案——最终一致性" class="headerlink" title="1.3.2 eBay 事件队列方案——最终一致性"></a>1.3.2 eBay 事件队列方案——最终一致性</h3><ul>
+        <p><em>事务消息是指帮用户实现类似XA的分布式事务功能。</em></p>
+<a id="more"></a>
+<h1>1 概述</h1>
+<h2 id="1-1-分布式事务"><a class="header-anchor" href="#1-1-分布式事务">¶</a>1.1 分布式事务</h2>
+<p>如果事务的参与者、支持事务的服务器及资源分别位于不同的分布式系统的不同节点之上，那就称为分布式事务。一个事务可能由很多操作构成，这些小的操作分布在不同的服务器上，且属于不同的应用，分布式事务需要保证这些小操作要么全部成功，要么全部失败。</p>
+<h2 id="1-2-产生"><a class="header-anchor" href="#1-2-产生">¶</a>1.2 产生</h2>
+<p>分布式事务的核心在于保证不同系统的数据一致性。比较应用SOA化以后，各个模块都有自己的数据库。分布式事务就是保证不同数据库的数据一致性。</p>
+<h2 id="1-3-解决方案"><a class="header-anchor" href="#1-3-解决方案">¶</a>1.3 解决方案</h2>
+<p>所有的方案基本都是2PC的变型与增强，先了解下2PC的工程实践。<a href="https://zhuanlan.zhihu.com/p/22594180" target="_blank" rel="noopener">两阶段提交的工程实践</a>。</p>
+<h3 id="1-3-1-X-Open-DTP模型"><a class="header-anchor" href="#1-3-1-X-Open-DTP模型">¶</a>1.3.1 X/Open DTP模型</h3>
+<p>此方案主要问题是协议和实现都比较复杂，且效率较低，不适合高并发场景。</p>
+<h3 id="1-3-2-eBay-事件队列方案——最终一致性"><a class="header-anchor" href="#1-3-2-eBay-事件队列方案——最终一致性">¶</a>1.3.2 eBay 事件队列方案——最终一致性</h3>
+<ul>
 <li>将分布式事务变成 本地事务+异步事件通知。将需要分布式处理的任务通过消息队列来异步执行。</li>
 <li>消息生产方，需要额外建一个消息表，并记录消息发送状态。消息表和业务数据要在一个事务里提交，然后消息发送给MQ。如果消息发送失败，会进行重试发送。</li>
 <li>消费者消费消息并完成自己的业务逻辑。此时如果本地事务处理成功，表明已经处理成功了，如果处理失败，那么就会重试执行。</li>
 <li>缺点是有些不适合异步执行的任务（有可能业务层面失败），需要给生产方发送一个业务补偿消息，否则不适合此方案。</li>
 </ul>
-<h3 id="1-3-3-TCC"><a href="#1-3-3-TCC" class="headerlink" title="1.3.3 TCC"></a>1.3.3 TCC</h3><p>//TODO</p>
-<h1 id="2-基于消息的分布式事务"><a href="#2-基于消息的分布式事务" class="headerlink" title="2 基于消息的分布式事务"></a>2 基于消息的分布式事务</h1><h2 id="2-1-业务方实现"><a href="#2-1-业务方实现" class="headerlink" title="2.1 业务方实现"></a>2.1 业务方实现</h2><p>一些消息队列本身不支持事务消息（Kafka,rabbitMQ），但只要消息队列保证消息可靠，业务方就可以通过MQ自己实现分布式事务。自己实现的话步骤如下：</p>
+<h3 id="1-3-3-TCC"><a class="header-anchor" href="#1-3-3-TCC">¶</a>1.3.3 TCC</h3>
+<p>//TODO</p>
+<h1>2 基于消息的分布式事务</h1>
+<h2 id="2-1-业务方实现"><a class="header-anchor" href="#2-1-业务方实现">¶</a>2.1 业务方实现</h2>
+<p>一些消息队列本身不支持事务消息（Kafka,rabbitMQ），但只要消息队列保证消息可靠，业务方就可以通过MQ自己实现分布式事务。自己实现的话步骤如下：</p>
 <ul>
 <li>将涉及分布式系统的的操作A和操作B所在的应用，分别定义成某个主题的生产者与消费者。</li>
 <li>在生产者的数据库中加一个事务状态表，将本地操作与此表状态的更新放在同一个本地事务中，这样就维持了数据的一致性。其中一个字段记录事务状态，一个字段记录消息的投递状态。</li>
@@ -231,7 +241,8 @@
 <li>对于已经commit的事务，如果消息投递状态还没改变，则起线程循环投递，直到成功。</li>
 <li>其它数据库的更新操作则订阅对应的消息，由于消息队列保证不丢消息，所以一定能保证最终一致性。注意消费者需要自己保证幂等。</li>
 </ul>
-<h2 id="2-2-事务消息"><a href="#2-2-事务消息" class="headerlink" title="2.2 事务消息"></a>2.2 事务消息</h2><p>另一个方案就是采取自身支持事务消息的MQ。事务消息的基本思路如下图所示。</p>
+<h2 id="2-2-事务消息"><a class="header-anchor" href="#2-2-事务消息">¶</a>2.2 事务消息</h2>
+<p>另一个方案就是采取自身支持事务消息的MQ。事务消息的基本思路如下图所示。</p>
 <p><img src="http://cyblog.oss-cn-hangzhou.aliyuncs.com/FMQ%E4%B9%8B%E4%BA%8B%E5%8A%A1%E6%B6%88%E6%81%AF/%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1.png" alt="分布式事务"></p>
 <p>显然，这个方案和2.1中的方案原理上并没有太大区别，只是把需要业务自己做的轮询变成了服务端的回查。</p>
 <ul>
@@ -239,7 +250,9 @@
 <li>对于多个需要事务消息的应用，不用重复造轮子。</li>
 <li>对于服务端，交互次数增多，增加了部分压力。</li>
 </ul>
-<h2 id="3-设计与实现"><a href="#3-设计与实现" class="headerlink" title="3 设计与实现"></a>3 设计与实现</h2><h3 id="3-1-交互流程"><a href="#3-1-交互流程" class="headerlink" title="3.1 交互流程"></a>3.1 交互流程</h3><p><img src="http://cyblog.oss-cn-hangzhou.aliyuncs.com/FMQ%E4%B9%8B%E4%BA%8B%E5%8A%A1%E6%B6%88%E6%81%AF/feedback.png" alt="feedback"></p>
+<h2 id="3-设计与实现"><a class="header-anchor" href="#3-设计与实现">¶</a>3 设计与实现</h2>
+<h3 id="3-1-交互流程"><a class="header-anchor" href="#3-1-交互流程">¶</a>3.1 交互流程</h3>
+<p><img src="http://cyblog.oss-cn-hangzhou.aliyuncs.com/FMQ%E4%B9%8B%E4%BA%8B%E5%8A%A1%E6%B6%88%E6%81%AF/feedback.png" alt="feedback"></p>
 <p>事务消息交互流程如下：</p>
 <ol>
 <li>生产者向broker发送消息；</li>
@@ -251,24 +264,33 @@
 <li>生产者根据检查得到的本地事务的最终状态后再次提交Commit 或是 Rollback。</li>
 </ol>
 <p>其中1-4属于正常流程，而5-7属于异常情况下的回查机制（后文称为Feedback机制）。</p>
-<h3 id="3-2-客户端设计"><a href="#3-2-客户端设计" class="headerlink" title="3.2 客户端设计"></a>3.2 客户端设计</h3><p>客户端设计比较简单，只需解决以下问题</p>
+<h3 id="3-2-客户端设计"><a class="header-anchor" href="#3-2-客户端设计">¶</a>3.2 客户端设计</h3>
+<p>客户端设计比较简单，只需解决以下问题</p>
 <ul>
 <li>如何设计生产接口</li>
 <li>如何设计回查的接口</li>
 <li>如何保证事务ID的唯一性</li>
 <li>宕机了如何知道哪些事务没有提交</li>
 </ul>
-<h3 id="3-2-1-生产接口设计"><a href="#3-2-1-生产接口设计" class="headerlink" title="3.2.1 生产接口设计"></a>3.2.1 生产接口设计</h3><p>为了减少业务方的自由度和工作量，生产的流程的prepare,commit,rollback操作由提供出去的SDK自己定义。所以提供回调供业务方实现本地事务的业务逻辑，返回值是本地事务处理的结果。客户端框架程序根据返回值决定commit还是rollback.调用方式如下(此部分设计参考RocketMQ):</p>
+<h3 id="3-2-1-生产接口设计"><a class="header-anchor" href="#3-2-1-生产接口设计">¶</a>3.2.1 生产接口设计</h3>
+<p>为了减少业务方的自由度和工作量，生产的流程的prepare,commit,rollback操作由提供出去的SDK自己定义。所以提供回调供业务方实现本地事务的业务逻辑，返回值是本地事务处理的结果。客户端框架程序根据返回值决定commit还是rollback.调用方式如下(此部分设计参考RocketMQ):</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">producer.sendMessageInTransaction(msg, new LocalTransactionExecuter() &#123;</span><br><span class="line">                                @Override</span><br><span class="line">                                public TransactionState executeLocalTransactionBranch(Message msg) &#123;</span><br><span class="line">                                    //本地事务，返回值为事务成功或失败</span><br><span class="line">                                &#125;</span><br><span class="line">                            &#125;)</span><br></pre></td></tr></table></figure>
 <p>接口的返回值为事务的成功或失败，定义如下</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">public enum TransactionState &#123;</span><br><span class="line">    //事务准备</span><br><span class="line">    PREPARE,</span><br><span class="line">    //事务已提交</span><br><span class="line">    COMMITTED,</span><br><span class="line">    //事务已回滚</span><br><span class="line">    ROLLBACK,</span><br><span class="line">    //未知状态</span><br><span class="line">    UNKNOWN;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<h3 id="3-2-2-回查接口设计"><a href="#3-2-2-回查接口设计" class="headerlink" title="3.2.2 回查接口设计"></a>3.2.2 回查接口设计</h3><p>回查接口是服务端发现事务处于不确定的状态后，向客户端进行查询。</p>
+<h3 id="3-2-2-回查接口设计"><a class="header-anchor" href="#3-2-2-回查接口设计">¶</a>3.2.2 回查接口设计</h3>
+<p>回查接口是服务端发现事务处于不确定的状态后，向客户端进行查询。</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">public interface TxStatusQuerier &#123;</span><br><span class="line">    /**</span><br><span class="line">     * 查询事务状态</span><br><span class="line">     *</span><br><span class="line">     * @param txId    事务ID</span><br><span class="line">     * @param queryId 查询ID</span><br><span class="line">     * @return 事务状态</span><br><span class="line">     */</span><br><span class="line">    TransactionState queryStatus(String txId, String queryId);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 <p>返回值为事务的状态，缺点是要像业务方暴露事务的状态。</p>
-<h2 id="3-2-3-事务ID"><a href="#3-2-3-事务ID" class="headerlink" title="3.2.3 事务ID"></a>3.2.3 事务ID</h2><p>事务ID作为唯一标识，支持业务方自定义。<br>如果用户不进行定义则为:</p>
+<h2 id="3-2-3-事务ID"><a class="header-anchor" href="#3-2-3-事务ID">¶</a>3.2.3 事务ID</h2>
+<p>事务ID作为唯一标识，支持业务方自定义。<br>
+如果用户不进行定义则为:</p>
 <p>客户端版本 | 客户端IP | 客户端启动时间 | 进程号 | 连接自增数 | 事务自增数</p>
-<h2 id="3-2-4-宕机恢复"><a href="#3-2-4-宕机恢复" class="headerlink" title="3.2.4 宕机恢复"></a>3.2.4 宕机恢复</h2><p>如果客户端宕机了，怎么判断到底有哪些事务处于什么状态呢？有一种解决方案叫做恰好不需要解决。<br>客户端以正常逻辑执行事务消息的时候，一个线程只能同时处理一个事务消息，事务相关信息都存储在线程上下文中，因此无需进行存储。<br>如果客户端发生异常，由于服务端必须对每个事务消息的状态进行存储，所以逻辑上由服务端进行反向查询就可以，客户端无需维持事务消息的状态。</p>
-<h3 id="3-3-服务端设计"><a href="#3-3-服务端设计" class="headerlink" title="3.3 服务端设计"></a>3.3 服务端设计</h3><p>进行服务端设计时，从功能上考虑，必须要做到：</p>
+<h2 id="3-2-4-宕机恢复"><a class="header-anchor" href="#3-2-4-宕机恢复">¶</a>3.2.4 宕机恢复</h2>
+<p>如果客户端宕机了，怎么判断到底有哪些事务处于什么状态呢？有一种解决方案叫做恰好不需要解决。<br>
+客户端以正常逻辑执行事务消息的时候，一个线程只能同时处理一个事务消息，事务相关信息都存储在线程上下文中，因此无需进行存储。<br>
+如果客户端发生异常，由于服务端必须对每个事务消息的状态进行存储，所以逻辑上由服务端进行反向查询就可以，客户端无需维持事务消息的状态。</p>
+<h3 id="3-3-服务端设计"><a class="header-anchor" href="#3-3-服务端设计">¶</a>3.3 服务端设计</h3>
+<p>进行服务端设计时，从功能上考虑，必须要做到：</p>
 <ul>
 <li>事务消息保证可靠，即一旦回复客户端提交或者回滚，就必须在任何情况下保持一致。</li>
 <li>对于未完成的事务，服务端在任何情况下都必须回查客户端，不能自行进行处理。</li>
@@ -279,9 +301,12 @@
 <li>将操作日志包装成消息进行存储，系统只对实际的消息存储文件进行同步刷盘。</li>
 <li>采用磁盘以外的可靠存储进行日志持久化（例如数据库），不破坏原有存储结构。</li>
 </ol>
-<p>方案1经济成本较高，对于大规模部署的系统目前使用经济负担较大。<br>方案2实现复杂，且很大改变了原有的存储逻辑，命令和数据混杂在一起。但是与原方案兼容性较好。<br>方案3实现简单，不破坏原有存储结构，但是引入了第三方依赖。</p>
+<p>方案1经济成本较高，对于大规模部署的系统目前使用经济负担较大。<br>
+方案2实现复杂，且很大改变了原有的存储逻辑，命令和数据混杂在一起。但是与原方案兼容性较好。<br>
+方案3实现简单，不破坏原有存储结构，但是引入了第三方依赖。</p>
 <p>目前暂时按方案2进行设计。</p>
-<h3 id="3-3-1-基本流程"><a href="#3-3-1-基本流程" class="headerlink" title="3.3.1 基本流程"></a>3.3.1 基本流程</h3><p>存储的消息总共分为以下几种类型</p>
+<h3 id="3-3-1-基本流程"><a class="header-anchor" href="#3-3-1-基本流程">¶</a>3.3.1 基本流程</h3>
+<p>存储的消息总共分为以下几种类型</p>
 <table>
 <thead>
 <tr>
@@ -320,11 +345,13 @@
 </tr>
 </tbody>
 </table>
-<h3 id="3-3-2-Prepare"><a href="#3-3-2-Prepare" class="headerlink" title="3.3.2 Prepare"></a>3.3.2 Prepare</h3><ul>
+<h3 id="3-3-2-Prepare"><a class="header-anchor" href="#3-3-2-Prepare">¶</a>3.3.2 Prepare</h3>
+<ul>
 <li>判断事务是否超出限制个数</li>
 <li>Prepare命令字刷盘</li>
 <li>将事务添加到事务管理器</li>
-<li>BrokerPreMessage刷盘<ul>
+<li>BrokerPreMessage刷盘
+<ul>
 <li>选择投递的队列</li>
 <li>preMessage刷盘</li>
 <li>为每一条消息建立BrokerRefMessage</li>
@@ -335,12 +362,15 @@
 <li>同步日志给从节点</li>
 </ul>
 <p>以上流程如果出现异常则直接执行回滚。</p>
-<h3 id="3-3-3-Commit"><a href="#3-3-3-Commit" class="headerlink" title="3.3.3 Commit"></a>3.3.3 Commit</h3><ul>
-<li>逐条refMessage刷盘<ul>
+<h3 id="3-3-3-Commit"><a class="header-anchor" href="#3-3-3-Commit">¶</a>3.3.3 Commit</h3>
+<ul>
+<li>逐条refMessage刷盘
+<ul>
 <li>判断和BrokerPreMessage还是不是一个文件</li>
 <li>判断消息大小是否小于 事务需要建索引消息下限，小于的话需要当做txMessage刷盘</li>
 <li>如果与pre不处于同一个文件 || 文件剩余空间不能写下 ，也需要当做txMessage刷盘</li>
-<li>如果需要当做txMessage刷盘<ul>
+<li>如果需要当做txMessage刷盘
+<ul>
 <li>复制一份原来的消息</li>
 <li>当做TYPE_TX_MESSAGE消息进行刷盘</li>
 </ul>
@@ -353,16 +383,20 @@
 <li>事务ID移除</li>
 <li>同步日志给从节点</li>
 </ul>
-<h3 id="3-3-4-RollBack"><a href="#3-3-4-RollBack" class="headerlink" title="3.3.4 RollBack"></a>3.3.4 RollBack</h3><ul>
+<h3 id="3-3-4-RollBack"><a class="header-anchor" href="#3-3-4-RollBack">¶</a>3.3.4 RollBack</h3>
+<ul>
 <li>BrokerRollback刷盘</li>
 <li>事务ID移除</li>
 <li>同步日志给从节点</li>
 </ul>
 <p>这里回滚很简单，因为只有建立索引的消息才会被消费掉，所以执行回滚操作的时候，只需要记录下命令字并且从事务管理器里面移除事务ID就可以。没有建立索引，相当于消息被回滚了。</p>
-<h3 id="3-3-5-Feedback"><a href="#3-3-5-Feedback" class="headerlink" title="3.3.5 Feedback"></a>3.3.5 Feedback</h3><h4 id="3-3-5-1-client"><a href="#3-3-5-1-client" class="headerlink" title="3.3.5.1 client"></a>3.3.5.1 client</h4><ul>
+<h3 id="3-3-5-Feedback"><a class="header-anchor" href="#3-3-5-Feedback">¶</a>3.3.5 Feedback</h3>
+<h4 id="3-3-5-1-client"><a class="header-anchor" href="#3-3-5-1-client">¶</a>3.3.5.1 client</h4>
+<ul>
 <li>每个app+topic唯一对应一个TopicFeedback</li>
 <li>TopicFeedback里保存map&lt;BrokerGroup,GroupFeedback&gt;</li>
-<li>GroupFeedback<ul>
+<li>GroupFeedback
+<ul>
 <li>独立线程，按照100ms间隔不断向服务端发TxFeedback命令（5s超时）。如果更新成功，则变更TxFeedback状态。</li>
 <li>如果feedback带事务ID，根据状态进行commit或者rollback。</li>
 <li>锁定并获取未提交的事务返回给客户端</li>
@@ -370,20 +404,26 @@
 </ul>
 </li>
 </ul>
-<h4 id="3-3-5-2-broker"><a href="#3-3-5-2-broker" class="headerlink" title="3.3.5.2 broker"></a>3.3.5.2 broker</h4><ul>
+<h4 id="3-3-5-2-broker"><a class="header-anchor" href="#3-3-5-2-broker">¶</a>3.3.5.2 broker</h4>
+<ul>
 <li>对应的key(topic+producer)如果有未完成事务，返回事务ID，查询对应状态。</li>
 <li>没有未完成事务，对请求进行长轮询管理。</li>
 </ul>
-<h3 id="3-3-6-Recovery"><a href="#3-3-6-Recovery" class="headerlink" title="3.3.6 Recovery"></a>3.3.6 Recovery</h3><p>在服务器发生宕机以后，如何恢复事务的管理呢？主要思想是采用checkPoint + redo log</p>
-<h4 id="3-3-6-1-检查点"><a href="#3-3-6-1-检查点" class="headerlink" title="3.3.6.1 检查点"></a>3.3.6.1 检查点</h4><p>先回顾下checkPoint在FMQ中的作用。由于FMQ采用日志文件同步刷盘，索引文件异步刷盘的方式。在非正常关闭时，内存中索引文件的最新值未能及时刷盘，就有可能出现日志文件进度大于索引文件的情况。此时系统就要从日志文件中重建索引，恢复丢失的数据。<br>如果从头恢复的话数据量较大，启动时间较长。checkPoint主要是为了解决这个问题，只要从这个记录点开始恢复索引文件就行。<br>非事务消息阶段，checkpoint记录的是日志的最大写入位置，且时序是 ：</p>
+<h3 id="3-3-6-Recovery"><a class="header-anchor" href="#3-3-6-Recovery">¶</a>3.3.6 Recovery</h3>
+<p>在服务器发生宕机以后，如何恢复事务的管理呢？主要思想是采用checkPoint + redo log</p>
+<h4 id="3-3-6-1-检查点"><a class="header-anchor" href="#3-3-6-1-检查点">¶</a>3.3.6.1 检查点</h4>
+<p>先回顾下checkPoint在FMQ中的作用。由于FMQ采用日志文件同步刷盘，索引文件异步刷盘的方式。在非正常关闭时，内存中索引文件的最新值未能及时刷盘，就有可能出现日志文件进度大于索引文件的情况。此时系统就要从日志文件中重建索引，恢复丢失的数据。<br>
+如果从头恢复的话数据量较大，启动时间较长。checkPoint主要是为了解决这个问题，只要从这个记录点开始恢复索引文件就行。<br>
+非事务消息阶段，checkpoint记录的是日志的最大写入位置，且时序是 ：</p>
 <ol>
 <li>checkpoint获取日志最大位置</li>
 <li>队列文件刷盘</li>
 <li>checkpoint文件刷盘</li>
 </ol>
-<p>这样checkPont的值是在队列文件刷盘以前，但是刷盘这个操作本身在队列文件刷盘以后。恢复的时候先加载队列索引文件，然后从checkPoint文件记录的日志位置开始重建索引。因为checkPoint点的数据获取在索引队列刷盘之前，这样就保证不会丢失索引数据。 </p>
+<p>这样checkPont的值是在队列文件刷盘以前，但是刷盘这个操作本身在队列文件刷盘以后。恢复的时候先加载队列索引文件，然后从checkPoint文件记录的日志位置开始重建索引。因为checkPoint点的数据获取在索引队列刷盘之前，这样就保证不会丢失索引数据。</p>
 <p>在事务消息中，因为所有的控制字都写在日志文件里，要重建事务上下文就必须重放日志（redo log）。所以checkpoint的值变成了min(日志刷盘位置,最小未完成的事务位置)。这样故障恢复的时候执行redo，才能保证所有未完成的事务都被重新加入内存的事务管理中。</p>
-<h4 id="3-3-6-2-恢复"><a href="#3-3-6-2-恢复" class="headerlink" title="3.3.6.2 恢复"></a>3.3.6.2 恢复</h4><p>从checkpoint对应的日志位置开始重建索引和事务管理，对于不同消息主要处理逻辑如下表。</p>
+<h4 id="3-3-6-2-恢复"><a class="header-anchor" href="#3-3-6-2-恢复">¶</a>3.3.6.2 恢复</h4>
+<p>从checkpoint对应的日志位置开始重建索引和事务管理，对于不同消息主要处理逻辑如下表。</p>
 <table>
 <thead>
 <tr>
@@ -422,55 +462,78 @@
 </tr>
 </tbody>
 </table>
-<h3 id="3-3-7-故障恢复正确性分析"><a href="#3-3-7-故障恢复正确性分析" class="headerlink" title="3.3.7 故障恢复正确性分析"></a>3.3.7 故障恢复正确性分析</h3><p>一条事务消息在服务端的同步刷盘过程如下，我们逐次分析如果在每个阶段宕机，服务端如何恢复以及客户端如何处理。</p>
+<h3 id="3-3-7-故障恢复正确性分析"><a class="header-anchor" href="#3-3-7-故障恢复正确性分析">¶</a>3.3.7 故障恢复正确性分析</h3>
+<p>一条事务消息在服务端的同步刷盘过程如下，我们逐次分析如果在每个阶段宕机，服务端如何恢复以及客户端如何处理。</p>
 <p><img src="http://cyblog.oss-cn-hangzhou.aliyuncs.com/FMQ%E4%B9%8B%E4%BA%8B%E5%8A%A1%E6%B6%88%E6%81%AF/%E4%BA%8B%E5%8A%A1%E6%B6%88%E6%81%AF%E6%B5%81%E7%A8%8B.png" alt="分布式事务流程"></p>
-<h4 id="3-3-7-1-prepare-flush前宕机"><a href="#3-3-7-1-prepare-flush前宕机" class="headerlink" title="3.3.7.1 prepare flush前宕机"></a>3.3.7.1 prepare flush前宕机</h4><p>对应图中阶段1。<br>此时服务端并没有开始写事务日志，启动以后不会做任何处理。<br>客户端没有收到服务端ack，prepare阶段失败，进行回滚.</p>
-<h4 id="3-3-7-2-preMessage-flush前宕机"><a href="#3-3-7-2-preMessage-flush前宕机" class="headerlink" title="3.3.7.2 preMessage flush前宕机"></a>3.3.7.2 preMessage flush前宕机</h4><p>对应图中阶段2。 </p>
+<h4 id="3-3-7-1-prepare-flush前宕机"><a class="header-anchor" href="#3-3-7-1-prepare-flush前宕机">¶</a>3.3.7.1 prepare flush前宕机</h4>
+<p>对应图中阶段1。<br>
+此时服务端并没有开始写事务日志，启动以后不会做任何处理。<br>
+客户端没有收到服务端ack，prepare阶段失败，进行回滚.</p>
+<h4 id="3-3-7-2-preMessage-flush前宕机"><a class="header-anchor" href="#3-3-7-2-preMessage-flush前宕机">¶</a>3.3.7.2 preMessage flush前宕机</h4>
+<p>对应图中阶段2。</p>
 <ul>
-<li>客户端由于prepare异常，进行了回滚。  </li>
+<li>客户端由于prepare异常，进行了回滚。</li>
 <li>服务端重启后解析日志发现prepare命令，进行redo，将事务ID加入管理器。Feedback模块进行回查，发现客户端已经回滚，移除此事务。</li>
 </ul>
-<h4 id="3-3-7-3-preMessage-flush过程中宕机"><a href="#3-3-7-3-preMessage-flush过程中宕机" class="headerlink" title="3.3.7.3 preMessage flush过程中宕机"></a>3.3.7.3 preMessage flush过程中宕机</h4><p>由于一次事务可以有多条消息，可能某些消息刷盘成功，某些没完成。由于此情况下客户端会进行回滚，Feedback最终发现事务执行失败，所以不会有影响。</p>
-<h4 id="3-3-7-4-refMessage-flush-前宕机"><a href="#3-3-7-4-refMessage-flush-前宕机" class="headerlink" title="3.3.7.4 refMessage flush 前宕机"></a>3.3.7.4 refMessage flush 前宕机</h4><p>对应图中3阶段prepare ack之前或者之后的时间段，以及收到commit还未写磁盘的时间段。<br>同3.3.7.2情况，区别只在与多恢复preMessage导致内存中存在refMessage。此时Feedback模块进行回查，发现客户端commit成功，继续执行commit操作。</p>
-<h4 id="3-3-7-5-refMessage-flush-过程中宕机"><a href="#3-3-7-5-refMessage-flush-过程中宕机" class="headerlink" title="3.3.7.5 refMessage flush 过程中宕机"></a>3.3.7.5 refMessage flush 过程中宕机</h4><ul>
+<h4 id="3-3-7-3-preMessage-flush过程中宕机"><a class="header-anchor" href="#3-3-7-3-preMessage-flush过程中宕机">¶</a>3.3.7.3 preMessage flush过程中宕机</h4>
+<p>由于一次事务可以有多条消息，可能某些消息刷盘成功，某些没完成。由于此情况下客户端会进行回滚，Feedback最终发现事务执行失败，所以不会有影响。</p>
+<h4 id="3-3-7-4-refMessage-flush-前宕机"><a class="header-anchor" href="#3-3-7-4-refMessage-flush-前宕机">¶</a>3.3.7.4 refMessage flush 前宕机</h4>
+<p>对应图中3阶段prepare ack之前或者之后的时间段，以及收到commit还未写磁盘的时间段。<br>
+同3.3.7.2情况，区别只在与多恢复preMessage导致内存中存在refMessage。此时Feedback模块进行回查，发现客户端commit成功，继续执行commit操作。</p>
+<h4 id="3-3-7-5-refMessage-flush-过程中宕机"><a class="header-anchor" href="#3-3-7-5-refMessage-flush-过程中宕机">¶</a>3.3.7.5 refMessage flush 过程中宕机</h4>
+<ul>
 <li>此时由于refMessage已经写了一部分，对于写成功的部分在恢复时已经成功建立了索引。</li>
 <li>但是未写成功部分，则不会建立索引被消费掉。但是由于在恢复preMessage时是全量恢复的，所以内存里是全量信息。</li>
 <li>Feedback模块进行回查，发现已经commit，重新执行。</li>
 </ul>
 <p>此处存在风险在于，在Feedback补偿的窗口期，可能出现一部分消息已经被投递，另一部分还没投递的情况。</p>
-<h4 id="3-3-7-6-commit-flush前宕机"><a href="#3-3-7-6-commit-flush前宕机" class="headerlink" title="3.3.7.6 commit flush前宕机"></a>3.3.7.6 commit flush前宕机</h4><p>和3.3.7.5的区别在于可以全量建立消费索引。但是由于服务端并不知道是否commit完成，还是会触发Feedback回查。</p>
-<h4 id="3-3-7-7-commit-flush后宕机"><a href="#3-3-7-7-commit-flush后宕机" class="headerlink" title="3.3.7.7 commit flush后宕机"></a>3.3.7.7 commit flush后宕机</h4><ul>
-<li><p>由于所有的流程都已经完成，redo log以后就相当于完成了事务，不会触发回查。客户端也并不关心commit ack。</p>
+<h4 id="3-3-7-6-commit-flush前宕机"><a class="header-anchor" href="#3-3-7-6-commit-flush前宕机">¶</a>3.3.7.6 commit flush前宕机</h4>
+<p>和3.3.7.5的区别在于可以全量建立消费索引。但是由于服务端并不知道是否commit完成，还是会触发Feedback回查。</p>
+<h4 id="3-3-7-7-commit-flush后宕机"><a class="header-anchor" href="#3-3-7-7-commit-flush后宕机">¶</a>3.3.7.7 commit flush后宕机</h4>
+<ul>
+<li>
+<p>由于所有的流程都已经完成，redo log以后就相当于完成了事务，不会触发回查。客户端也并不关心commit ack。</p>
 </li>
-<li><p>实现时客户端可以选择不需要服务端回复commit ack以减少交互。</p>
+<li>
+<p>实现时客户端可以选择不需要服务端回复commit ack以减少交互。</p>
 </li>
 </ul>
-<h4 id="3-3-7-8-roolback-flush前后宕机"><a href="#3-3-7-8-roolback-flush前后宕机" class="headerlink" title="3.3.7.8 roolback flush前后宕机"></a>3.3.7.8 roolback flush前后宕机</h4><ul>
+<h4 id="3-3-7-8-roolback-flush前后宕机"><a class="header-anchor" href="#3-3-7-8-roolback-flush前后宕机">¶</a>3.3.7.8 roolback flush前后宕机</h4>
+<ul>
 <li>roolback flush前宕机，触发回查，进行回滚</li>
 <li>roolback flush后宕机，redo恢复，不需要回查</li>
 </ul>
-<h2 id="3-4-工程实现细节"><a href="#3-4-工程实现细节" class="headerlink" title="3.4 工程实现细节"></a>3.4 工程实现细节</h2><h4 id="宕机了如何维护内存的事务管理器"><a href="#宕机了如何维护内存的事务管理器" class="headerlink" title="宕机了如何维护内存的事务管理器"></a>宕机了如何维护内存的事务管理器</h4><ul>
+<h2 id="3-4-工程实现细节"><a class="header-anchor" href="#3-4-工程实现细节">¶</a>3.4 工程实现细节</h2>
+<h4 id="宕机了如何维护内存的事务管理器"><a class="header-anchor" href="#宕机了如何维护内存的事务管理器">¶</a>宕机了如何维护内存的事务管理器</h4>
+<ul>
 <li>日志进行重放</li>
 </ul>
-<h4 id="refMessage作用"><a href="#refMessage作用" class="headerlink" title="refMessage作用"></a>refMessage作用</h4><ul>
+<h4 id="refMessage作用"><a class="header-anchor" href="#refMessage作用">¶</a>refMessage作用</h4>
+<ul>
 <li>事务消息支持单个事务多条消息，refMessage实际上是起到了索引的作用</li>
 </ul>
-<h4 id="refMessage为什么要刷盘以及和原消息不在一个文件时复制内容"><a href="#refMessage为什么要刷盘以及和原消息不在一个文件时复制内容" class="headerlink" title="refMessage为什么要刷盘以及和原消息不在一个文件时复制内容"></a>refMessage为什么要刷盘以及和原消息不在一个文件时复制内容</h4><ul>
+<h4 id="refMessage为什么要刷盘以及和原消息不在一个文件时复制内容"><a class="header-anchor" href="#refMessage为什么要刷盘以及和原消息不在一个文件时复制内容">¶</a>refMessage为什么要刷盘以及和原消息不在一个文件时复制内容</h4>
+<ul>
 <li>磁盘清理按照文件为维度删除</li>
 <li>没有建立索引的消息可能被删除，重新复制消息可以防止原消息已经被清理</li>
 </ul>
-<h4 id="commit阶段先持久化refMessage还是先持久化commit命令字"><a href="#commit阶段先持久化refMessage还是先持久化commit命令字" class="headerlink" title="commit阶段先持久化refMessage还是先持久化commit命令字"></a>commit阶段先持久化refMessage还是先持久化commit命令字</h4><ul>
+<h4 id="commit阶段先持久化refMessage还是先持久化commit命令字"><a class="header-anchor" href="#commit阶段先持久化refMessage还是先持久化commit命令字">¶</a>commit阶段先持久化refMessage还是先持久化commit命令字</h4>
+<ul>
 <li>先持久化refMessage，再持久化commit。否则存在多条refMessage时，如果宕机恢复，不知道是否需要回查</li>
 </ul>
-<h4 id="由于prepare阶段没有建立索引，如果2天还没有commit，原始文件被删除了怎么办"><a href="#由于prepare阶段没有建立索引，如果2天还没有commit，原始文件被删除了怎么办" class="headerlink" title="由于prepare阶段没有建立索引，如果2天还没有commit，原始文件被删除了怎么办"></a>由于prepare阶段没有建立索引，如果2天还没有commit，原始文件被删除了怎么办</h4><ul>
+<h4 id="由于prepare阶段没有建立索引，如果2天还没有commit，原始文件被删除了怎么办"><a class="header-anchor" href="#由于prepare阶段没有建立索引，如果2天还没有commit，原始文件被删除了怎么办">¶</a>由于prepare阶段没有建立索引，如果2天还没有commit，原始文件被删除了怎么办</h4>
+<ul>
 <li>清理逻辑加上比较ack的最小值与checkPoint记录的recoveryOffset。这样未被完成的事务不会被删除。（这样是否还有必要复制消息内容到refMessage?）</li>
 </ul>
-<h4 id="是否支持消息回溯"><a href="#是否支持消息回溯" class="headerlink" title="是否支持消息回溯"></a>是否支持消息回溯</h4><ul>
+<h4 id="是否支持消息回溯"><a class="header-anchor" href="#是否支持消息回溯">¶</a>是否支持消息回溯</h4>
+<ul>
 <li>逻辑上消息回溯只涉及索引表，不涉及日志修改。</li>
 </ul>
-<h2 id="4-RocketMQ实现"><a href="#4-RocketMQ实现" class="headerlink" title="4 RocketMQ实现"></a>4 RocketMQ实现</h2><ul>
+<h2 id="4-RocketMQ实现"><a class="header-anchor" href="#4-RocketMQ实现">¶</a>4 RocketMQ实现</h2>
+<ul>
 <li>table &amp; redo log是否同步刷盘，对于效率的影响</li>
-<li>修改commit log导致脏页的问题<br>//TODO</li>
+<li>修改commit log导致脏页的问题<br>
+//TODO</li>
 </ul>
 
       
@@ -629,7 +692,7 @@
                 </span>
                 <span class="tooltip-content">
                     <div class="toc-article">
-                    <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#1-概述"><span class="toc-number">1.</span> <span class="toc-text">1 概述</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#1-1-分布式事务"><span class="toc-number">1.1.</span> <span class="toc-text">1.1 分布式事务</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#1-2-产生"><span class="toc-number">1.2.</span> <span class="toc-text">1.2 产生</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#1-3-解决方案"><span class="toc-number">1.3.</span> <span class="toc-text">1.3 解决方案</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-3-1-X-Open-DTP模型"><span class="toc-number">1.3.1.</span> <span class="toc-text">1.3.1 X/Open DTP模型</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-3-2-eBay-事件队列方案——最终一致性"><span class="toc-number">1.3.2.</span> <span class="toc-text">1.3.2 eBay 事件队列方案——最终一致性</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-3-3-TCC"><span class="toc-number">1.3.3.</span> <span class="toc-text">1.3.3 TCC</span></a></li></ol></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#2-基于消息的分布式事务"><span class="toc-number">2.</span> <span class="toc-text">2 基于消息的分布式事务</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#2-1-业务方实现"><span class="toc-number">2.1.</span> <span class="toc-text">2.1 业务方实现</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-2-事务消息"><span class="toc-number">2.2.</span> <span class="toc-text">2.2 事务消息</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-设计与实现"><span class="toc-number">2.3.</span> <span class="toc-text">3 设计与实现</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-交互流程"><span class="toc-number">2.3.1.</span> <span class="toc-text">3.1 交互流程</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-客户端设计"><span class="toc-number">2.3.2.</span> <span class="toc-text">3.2 客户端设计</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-1-生产接口设计"><span class="toc-number">2.3.3.</span> <span class="toc-text">3.2.1 生产接口设计</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-2-回查接口设计"><span class="toc-number">2.3.4.</span> <span class="toc-text">3.2.2 回查接口设计</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-2-3-事务ID"><span class="toc-number">2.4.</span> <span class="toc-text">3.2.3 事务ID</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-2-4-宕机恢复"><span class="toc-number">2.5.</span> <span class="toc-text">3.2.4 宕机恢复</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-服务端设计"><span class="toc-number">2.5.1.</span> <span class="toc-text">3.3 服务端设计</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-1-基本流程"><span class="toc-number">2.5.2.</span> <span class="toc-text">3.3.1 基本流程</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-2-Prepare"><span class="toc-number">2.5.3.</span> <span class="toc-text">3.3.2 Prepare</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-3-Commit"><span class="toc-number">2.5.4.</span> <span class="toc-text">3.3.3 Commit</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-4-RollBack"><span class="toc-number">2.5.5.</span> <span class="toc-text">3.3.4 RollBack</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-5-Feedback"><span class="toc-number">2.5.6.</span> <span class="toc-text">3.3.5 Feedback</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#3-3-5-1-client"><span class="toc-number">2.5.6.1.</span> <span class="toc-text">3.3.5.1 client</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#3-3-5-2-broker"><span class="toc-number">2.5.6.2.</span> <span class="toc-text">3.3.5.2 broker</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-6-Recovery"><span class="toc-number">2.5.7.</span> <span class="toc-text">3.3.6 Recovery</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#3-3-6-1-检查点"><span class="toc-number">2.5.7.1.</span> <span class="toc-text">3.3.6.1 检查点</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#3-3-6-2-恢复"><span class="toc-number">2.5.7.2.</span> <span class="toc-text">3.3.6.2 恢复</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-7-故障恢复正确性分析"><span class="toc-number">2.5.8.</span> <span class="toc-text">3.3.7 故障恢复正确性分析</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#3-3-7-1-prepare-flush前宕机"><span class="toc-number">2.5.8.1.</span> <span class="toc-text">3.3.7.1 prepare flush前宕机</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#3-3-7-2-preMessage-flush前宕机"><span class="toc-number">2.5.8.2.</span> <span class="toc-text">3.3.7.2 preMessage flush前宕机</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#3-3-7-3-preMessage-flush过程中宕机"><span class="toc-number">2.5.8.3.</span> <span class="toc-text">3.3.7.3 preMessage flush过程中宕机</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#3-3-7-4-refMessage-flush-前宕机"><span class="toc-number">2.5.8.4.</span> <span class="toc-text">3.3.7.4 refMessage flush 前宕机</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#3-3-7-5-refMessage-flush-过程中宕机"><span class="toc-number">2.5.8.5.</span> <span class="toc-text">3.3.7.5 refMessage flush 过程中宕机</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#3-3-7-6-commit-flush前宕机"><span class="toc-number">2.5.8.6.</span> <span class="toc-text">3.3.7.6 commit flush前宕机</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#3-3-7-7-commit-flush后宕机"><span class="toc-number">2.5.8.7.</span> <span class="toc-text">3.3.7.7 commit flush后宕机</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#3-3-7-8-roolback-flush前后宕机"><span class="toc-number">2.5.8.8.</span> <span class="toc-text">3.3.7.8 roolback flush前后宕机</span></a></li></ol></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-4-工程实现细节"><span class="toc-number">2.6.</span> <span class="toc-text">3.4 工程实现细节</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#宕机了如何维护内存的事务管理器"><span class="toc-number">2.6.0.1.</span> <span class="toc-text">宕机了如何维护内存的事务管理器</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#refMessage作用"><span class="toc-number">2.6.0.2.</span> <span class="toc-text">refMessage作用</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#refMessage为什么要刷盘以及和原消息不在一个文件时复制内容"><span class="toc-number">2.6.0.3.</span> <span class="toc-text">refMessage为什么要刷盘以及和原消息不在一个文件时复制内容</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#commit阶段先持久化refMessage还是先持久化commit命令字"><span class="toc-number">2.6.0.4.</span> <span class="toc-text">commit阶段先持久化refMessage还是先持久化commit命令字</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#由于prepare阶段没有建立索引，如果2天还没有commit，原始文件被删除了怎么办"><span class="toc-number">2.6.0.5.</span> <span class="toc-text">由于prepare阶段没有建立索引，如果2天还没有commit，原始文件被删除了怎么办</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#是否支持消息回溯"><span class="toc-number">2.6.0.6.</span> <span class="toc-text">是否支持消息回溯</span></a></li></ol></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4-RocketMQ实现"><span class="toc-number">2.7.</span> <span class="toc-text">4 RocketMQ实现</span></a></li></ol></li></ol>
+                    <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#null"><span class="toc-number">1.</span> <span class="toc-text">1 概述</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#1-1-分布式事务"><span class="toc-number">1.1.</span> <span class="toc-text">¶1.1 分布式事务</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#1-2-产生"><span class="toc-number">1.2.</span> <span class="toc-text">¶1.2 产生</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#1-3-解决方案"><span class="toc-number">1.3.</span> <span class="toc-text">¶1.3 解决方案</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-3-1-X-Open-DTP模型"><span class="toc-number">1.3.1.</span> <span class="toc-text">¶1.3.1 X/Open DTP模型</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-3-2-eBay-事件队列方案——最终一致性"><span class="toc-number">1.3.2.</span> <span class="toc-text">¶1.3.2 eBay 事件队列方案——最终一致性</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-3-3-TCC"><span class="toc-number">1.3.3.</span> <span class="toc-text">¶1.3.3 TCC</span></a></li></ol></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#null"><span class="toc-number">2.</span> <span class="toc-text">2 基于消息的分布式事务</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#2-1-业务方实现"><span class="toc-number">2.1.</span> <span class="toc-text">¶2.1 业务方实现</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-2-事务消息"><span class="toc-number">2.2.</span> <span class="toc-text">¶2.2 事务消息</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-设计与实现"><span class="toc-number">2.3.</span> <span class="toc-text">¶3 设计与实现</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-交互流程"><span class="toc-number">2.3.1.</span> <span class="toc-text">¶3.1 交互流程</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-客户端设计"><span class="toc-number">2.3.2.</span> <span class="toc-text">¶3.2 客户端设计</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-1-生产接口设计"><span class="toc-number">2.3.3.</span> <span class="toc-text">¶3.2.1 生产接口设计</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-2-回查接口设计"><span class="toc-number">2.3.4.</span> <span class="toc-text">¶3.2.2 回查接口设计</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-2-3-事务ID"><span class="toc-number">2.4.</span> <span class="toc-text">¶3.2.3 事务ID</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-2-4-宕机恢复"><span class="toc-number">2.5.</span> <span class="toc-text">¶3.2.4 宕机恢复</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-服务端设计"><span class="toc-number">2.5.1.</span> <span class="toc-text">¶3.3 服务端设计</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-1-基本流程"><span class="toc-number">2.5.2.</span> <span class="toc-text">¶3.3.1 基本流程</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-2-Prepare"><span class="toc-number">2.5.3.</span> <span class="toc-text">¶3.3.2 Prepare</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-3-Commit"><span class="toc-number">2.5.4.</span> <span class="toc-text">¶3.3.3 Commit</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-4-RollBack"><span class="toc-number">2.5.5.</span> <span class="toc-text">¶3.3.4 RollBack</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-5-Feedback"><span class="toc-number">2.5.6.</span> <span class="toc-text">¶3.3.5 Feedback</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#3-3-5-1-client"><span class="toc-number">2.5.6.1.</span> <span class="toc-text">¶3.3.5.1 client</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#3-3-5-2-broker"><span class="toc-number">2.5.6.2.</span> <span class="toc-text">¶3.3.5.2 broker</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-6-Recovery"><span class="toc-number">2.5.7.</span> <span class="toc-text">¶3.3.6 Recovery</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#3-3-6-1-检查点"><span class="toc-number">2.5.7.1.</span> <span class="toc-text">¶3.3.6.1 检查点</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#3-3-6-2-恢复"><span class="toc-number">2.5.7.2.</span> <span class="toc-text">¶3.3.6.2 恢复</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-7-故障恢复正确性分析"><span class="toc-number">2.5.8.</span> <span class="toc-text">¶3.3.7 故障恢复正确性分析</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#3-3-7-1-prepare-flush前宕机"><span class="toc-number">2.5.8.1.</span> <span class="toc-text">¶3.3.7.1 prepare flush前宕机</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#3-3-7-2-preMessage-flush前宕机"><span class="toc-number">2.5.8.2.</span> <span class="toc-text">¶3.3.7.2 preMessage flush前宕机</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#3-3-7-3-preMessage-flush过程中宕机"><span class="toc-number">2.5.8.3.</span> <span class="toc-text">¶3.3.7.3 preMessage flush过程中宕机</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#3-3-7-4-refMessage-flush-前宕机"><span class="toc-number">2.5.8.4.</span> <span class="toc-text">¶3.3.7.4 refMessage flush 前宕机</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#3-3-7-5-refMessage-flush-过程中宕机"><span class="toc-number">2.5.8.5.</span> <span class="toc-text">¶3.3.7.5 refMessage flush 过程中宕机</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#3-3-7-6-commit-flush前宕机"><span class="toc-number">2.5.8.6.</span> <span class="toc-text">¶3.3.7.6 commit flush前宕机</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#3-3-7-7-commit-flush后宕机"><span class="toc-number">2.5.8.7.</span> <span class="toc-text">¶3.3.7.7 commit flush后宕机</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#3-3-7-8-roolback-flush前后宕机"><span class="toc-number">2.5.8.8.</span> <span class="toc-text">¶3.3.7.8 roolback flush前后宕机</span></a></li></ol></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-4-工程实现细节"><span class="toc-number">2.6.</span> <span class="toc-text">¶3.4 工程实现细节</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#宕机了如何维护内存的事务管理器"><span class="toc-number">2.6.0.1.</span> <span class="toc-text">¶宕机了如何维护内存的事务管理器</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#refMessage作用"><span class="toc-number">2.6.0.2.</span> <span class="toc-text">¶refMessage作用</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#refMessage为什么要刷盘以及和原消息不在一个文件时复制内容"><span class="toc-number">2.6.0.3.</span> <span class="toc-text">¶refMessage为什么要刷盘以及和原消息不在一个文件时复制内容</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#commit阶段先持久化refMessage还是先持久化commit命令字"><span class="toc-number">2.6.0.4.</span> <span class="toc-text">¶commit阶段先持久化refMessage还是先持久化commit命令字</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#由于prepare阶段没有建立索引，如果2天还没有commit，原始文件被删除了怎么办"><span class="toc-number">2.6.0.5.</span> <span class="toc-text">¶由于prepare阶段没有建立索引，如果2天还没有commit，原始文件被删除了怎么办</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#是否支持消息回溯"><span class="toc-number">2.6.0.6.</span> <span class="toc-text">¶是否支持消息回溯</span></a></li></ol></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4-RocketMQ实现"><span class="toc-number">2.7.</span> <span class="toc-text">¶4 RocketMQ实现</span></a></li></ol></li></ol>
                     </div>
                 </span>
             </div>
@@ -786,14 +849,6 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
           <ul class="article-tag-list" q-show="showTags">
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color5">论文研读</a>
-              </li>
-             
-              <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color3">存储</a>
-              </li>
-             
-              <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color4">FMQ</a>
               </li>
              
@@ -802,11 +857,19 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color4">中间件</a>
+                <a href="javascript:void(0)" class="js-tag color5">论文研读</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color3">存储</a>
               </li>
              
               <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color5">java</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color4">中间件</a>
               </li>
              
               <li class="article-tag-list-item">
@@ -826,11 +889,15 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color4">RocketMQ</a>
+              </li>
+             
+              <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color4">jvm</a>
               </li>
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color4">RocketMQ</a>
+                <a href="javascript:void(0)" class="js-tag color4">JVM</a>
               </li>
              
               <li class="article-tag-list-item">
@@ -839,10 +906,6 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
              
               <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color3">计划</a>
-              </li>
-             
-              <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color4">JVM</a>
               </li>
              
               <li class="article-tag-list-item">

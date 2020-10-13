@@ -206,39 +206,57 @@
     
     <div class="article-entry" itemprop="articleBody">
       
-        <p>本文介绍了FMQ的消息回溯功能的设计及其实现。实际实现为根据时间和队列位置进行消费位置的设置，以达到重新消费消息或者跳过部分消息的功能。<br><a id="more"></a></p>
-<h2 id="1-需求分析"><a href="#1-需求分析" class="headerlink" title="1 需求分析"></a>1 需求分析</h2><p>在实际生产环境中，经常有业务需要将已经消费过的消息重新消费；有另外一些业务则因为某些原因，已经对积压的消息不再感兴趣，希望能对消息进行跳过处理。针对这两种场景，有了消息回溯以及跳过的需求。</p>
-<h3 id="1-1-功能维度"><a href="#1-1-功能维度" class="headerlink" title="1.1 功能维度"></a>1.1 功能维度</h3><p>从功能维度上来说，分为2块：</p>
+        <p>本文介绍了FMQ的消息回溯功能的设计及其实现。实际实现为根据时间和队列位置进行消费位置的设置，以达到重新消费消息或者跳过部分消息的功能。</p>
+<a id="more"></a>
+<h2 id="1-需求分析"><a class="header-anchor" href="#1-需求分析">¶</a>1 需求分析</h2>
+<p>在实际生产环境中，经常有业务需要将已经消费过的消息重新消费；有另外一些业务则因为某些原因，已经对积压的消息不再感兴趣，希望能对消息进行跳过处理。针对这两种场景，有了消息回溯以及跳过的需求。</p>
+<h3 id="1-1-功能维度"><a class="header-anchor" href="#1-1-功能维度">¶</a>1.1 功能维度</h3>
+<p>从功能维度上来说，分为2块：</p>
 <ul>
 <li>按时间进行回溯，即用户指定时间点，消费从这个时间点开始重新消费。</li>
 <li>按照消费位置进行回溯，即从某个偏移量开始继续向后消费。</li>
 </ul>
-<h3 id="1-2-操作维度"><a href="#1-2-操作维度" class="headerlink" title="1.2 操作维度"></a>1.2 操作维度</h3><p>对于操作维度，分为对于单个队列的操作和对所有队列的批量操作。</p>
-<h2 id="2-设计"><a href="#2-设计" class="headerlink" title="2 设计"></a>2 设计</h2><h3 id="2-1-交互设计"><a href="#2-1-交互设计" class="headerlink" title="2.1 交互设计"></a>2.1 交互设计</h3><p>在进行交互设计之前，有几个问题首先需要确定。</p>
+<h3 id="1-2-操作维度"><a class="header-anchor" href="#1-2-操作维度">¶</a>1.2 操作维度</h3>
+<p>对于操作维度，分为对于单个队列的操作和对所有队列的批量操作。</p>
+<h2 id="2-设计"><a class="header-anchor" href="#2-设计">¶</a>2 设计</h2>
+<h3 id="2-1-交互设计"><a class="header-anchor" href="#2-1-交互设计">¶</a>2.1 交互设计</h3>
+<p>在进行交互设计之前，有几个问题首先需要确定。</p>
 <ul>
-<li>由于生产环境对于积压的消息不会在超期后自动清理，需要人工进行清理。那么如果数据没被清理，回溯的最长时间(位置)是按照对外保证数据存储的最长时间（位置）还是只要实际磁盘存在的数据都允许回溯？<ul>
+<li>由于生产环境对于积压的消息不会在超期后自动清理，需要人工进行清理。那么如果数据没被清理，回溯的最长时间(位置)是按照对外保证数据存储的最长时间（位置）还是只要实际磁盘存在的数据都允许回溯？
+<ul>
 <li>取磁盘实际存在的数据，只要数据存在，尽可能的允许业务进行回溯。</li>
 </ul>
 </li>
-<li>如果回溯的时间点没有消息精确对应，取前一条的位置还是后一条的位置？<ul>
+<li>如果回溯的时间点没有消息精确对应，取前一条的位置还是后一条的位置？
+<ul>
 <li>如果不存在某条消息精确对应此时间点，则回溯到此时间点后的第一条。</li>
 </ul>
 </li>
 </ul>
-<h3 id="2-1-1-按时间单队列回溯"><a href="#2-1-1-按时间单队列回溯" class="headerlink" title="2.1.1 按时间单队列回溯"></a>2.1.1 按时间单队列回溯</h3><h3 id="2-1-2-按时间批量回溯"><a href="#2-1-2-按时间批量回溯" class="headerlink" title="2.1.2 按时间批量回溯"></a>2.1.2 按时间批量回溯</h3><h3 id="2-1-3-按位置单队列回溯"><a href="#2-1-3-按位置单队列回溯" class="headerlink" title="2.1.3 按位置单队列回溯"></a>2.1.3 按位置单队列回溯</h3><h3 id="2-1-4-按位置批量回溯"><a href="#2-1-4-按位置批量回溯" class="headerlink" title="2.1.4 按位置批量回溯"></a>2.1.4 按位置批量回溯</h3><h3 id="2-2-后台设计"><a href="#2-2-后台设计" class="headerlink" title="2.2 后台设计"></a>2.2 后台设计</h3><h2 id="3-实现"><a href="#3-实现" class="headerlink" title="3 实现"></a>3 实现</h2><h3 id="offset"><a href="#offset" class="headerlink" title="offset"></a>offset</h3><ul>
+<h3 id="2-1-1-按时间单队列回溯"><a class="header-anchor" href="#2-1-1-按时间单队列回溯">¶</a>2.1.1 按时间单队列回溯</h3>
+<h3 id="2-1-2-按时间批量回溯"><a class="header-anchor" href="#2-1-2-按时间批量回溯">¶</a>2.1.2 按时间批量回溯</h3>
+<h3 id="2-1-3-按位置单队列回溯"><a class="header-anchor" href="#2-1-3-按位置单队列回溯">¶</a>2.1.3 按位置单队列回溯</h3>
+<h3 id="2-1-4-按位置批量回溯"><a class="header-anchor" href="#2-1-4-按位置批量回溯">¶</a>2.1.4 按位置批量回溯</h3>
+<h3 id="2-2-后台设计"><a class="header-anchor" href="#2-2-后台设计">¶</a>2.2 后台设计</h3>
+<h2 id="3-实现"><a class="header-anchor" href="#3-实现">¶</a>3 实现</h2>
+<h3 id="offset"><a class="header-anchor" href="#offset">¶</a>offset</h3>
+<ul>
 <li>subscribeOffset 消费者接入开始消费的位置</li>
 <li>ackOffset 消费者已经消费的位置</li>
 <li>acks 消费区间</li>
 </ul>
-<h4 id="queueOffset-acknowledge"><a href="#queueOffset-acknowledge" class="headerlink" title="queueOffset.acknowledge"></a>queueOffset.acknowledge</h4><ul>
+<h4 id="queueOffset-acknowledge"><a class="header-anchor" href="#queueOffset-acknowledge">¶</a>queueOffset.acknowledge</h4>
+<ul>
 <li>更新acks值</li>
-<li>判断ackOffset是否需要更新.满足一下两个条件之一<ul>
+<li>判断ackOffset是否需要更新.满足一下两个条件之一
+<ul>
 <li>ackOffset &gt; subscribeOffset （ackOffset == subscribeOffset 说明未被消费过，ackOffset &lt; subscribeOffset 说明消费过程中取消订阅又重新订阅，然后与offsetManager的createOffset发生并发问题，见异常情况1）</li>
 <li>headSequence.contains(target.getSubscribeOffset().get() + ConsumeQueue.CQ_RECORD_SIZE) 不符合这条说明区间最开始的都没ack，不需要更新ack值</li>
 </ul>
 </li>
 </ul>
-<h3 id="异常情况"><a href="#异常情况" class="headerlink" title="异常情况"></a>异常情况</h3><ul>
+<h3 id="异常情况"><a class="header-anchor" href="#异常情况">¶</a>异常情况</h3>
+<ul>
 <li>先取消订阅，再订阅，此时正好发生ack，发现subscribeOffset由于订阅被置为maxOffset，ackOffset尚未来得及被重置，则ackOffset&lt;subscribeOffset.此时应该正常。</li>
 </ul>
 
@@ -398,7 +416,7 @@
                 </span>
                 <span class="tooltip-content">
                     <div class="toc-article">
-                    <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#1-需求分析"><span class="toc-number">1.</span> <span class="toc-text">1 需求分析</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-1-功能维度"><span class="toc-number">1.1.</span> <span class="toc-text">1.1 功能维度</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-2-操作维度"><span class="toc-number">1.2.</span> <span class="toc-text">1.2 操作维度</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-设计"><span class="toc-number">2.</span> <span class="toc-text">2 设计</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-交互设计"><span class="toc-number">2.1.</span> <span class="toc-text">2.1 交互设计</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-1-按时间单队列回溯"><span class="toc-number">2.2.</span> <span class="toc-text">2.1.1 按时间单队列回溯</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-2-按时间批量回溯"><span class="toc-number">2.3.</span> <span class="toc-text">2.1.2 按时间批量回溯</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-3-按位置单队列回溯"><span class="toc-number">2.4.</span> <span class="toc-text">2.1.3 按位置单队列回溯</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-4-按位置批量回溯"><span class="toc-number">2.5.</span> <span class="toc-text">2.1.4 按位置批量回溯</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-后台设计"><span class="toc-number">2.6.</span> <span class="toc-text">2.2 后台设计</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-实现"><span class="toc-number">3.</span> <span class="toc-text">3 实现</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#offset"><span class="toc-number">3.1.</span> <span class="toc-text">offset</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#queueOffset-acknowledge"><span class="toc-number">3.1.1.</span> <span class="toc-text">queueOffset.acknowledge</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#异常情况"><span class="toc-number">3.2.</span> <span class="toc-text">异常情况</span></a></li></ol></li></ol>
+                    <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#1-需求分析"><span class="toc-number">1.</span> <span class="toc-text">¶1 需求分析</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-1-功能维度"><span class="toc-number">1.1.</span> <span class="toc-text">¶1.1 功能维度</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-2-操作维度"><span class="toc-number">1.2.</span> <span class="toc-text">¶1.2 操作维度</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-设计"><span class="toc-number">2.</span> <span class="toc-text">¶2 设计</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-交互设计"><span class="toc-number">2.1.</span> <span class="toc-text">¶2.1 交互设计</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-1-按时间单队列回溯"><span class="toc-number">2.2.</span> <span class="toc-text">¶2.1.1 按时间单队列回溯</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-2-按时间批量回溯"><span class="toc-number">2.3.</span> <span class="toc-text">¶2.1.2 按时间批量回溯</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-3-按位置单队列回溯"><span class="toc-number">2.4.</span> <span class="toc-text">¶2.1.3 按位置单队列回溯</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-4-按位置批量回溯"><span class="toc-number">2.5.</span> <span class="toc-text">¶2.1.4 按位置批量回溯</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-后台设计"><span class="toc-number">2.6.</span> <span class="toc-text">¶2.2 后台设计</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-实现"><span class="toc-number">3.</span> <span class="toc-text">¶3 实现</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#offset"><span class="toc-number">3.1.</span> <span class="toc-text">¶offset</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#queueOffset-acknowledge"><span class="toc-number">3.1.1.</span> <span class="toc-text">¶queueOffset.acknowledge</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#异常情况"><span class="toc-number">3.2.</span> <span class="toc-text">¶异常情况</span></a></li></ol></li></ol>
                     </div>
                 </span>
             </div>
@@ -555,14 +573,6 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
           <ul class="article-tag-list" q-show="showTags">
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color5">论文研读</a>
-              </li>
-             
-              <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color3">存储</a>
-              </li>
-             
-              <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color4">FMQ</a>
               </li>
              
@@ -571,11 +581,19 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color4">中间件</a>
+                <a href="javascript:void(0)" class="js-tag color5">论文研读</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color3">存储</a>
               </li>
              
               <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color5">java</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color4">中间件</a>
               </li>
              
               <li class="article-tag-list-item">
@@ -595,11 +613,15 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color4">RocketMQ</a>
+              </li>
+             
+              <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color4">jvm</a>
               </li>
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color4">RocketMQ</a>
+                <a href="javascript:void(0)" class="js-tag color4">JVM</a>
               </li>
              
               <li class="article-tag-list-item">
@@ -608,10 +630,6 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
              
               <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color3">计划</a>
-              </li>
-             
-              <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color4">JVM</a>
               </li>
              
               <li class="article-tag-list-item">

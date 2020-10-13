@@ -208,10 +208,19 @@
     
     <div class="article-entry" itemprop="articleBody">
       
-        <p>消息队列如果要做到高可靠且有一定积压能力，则必须要进行持久化。持久化对性能的影响很大，于是如何设计一个可靠而高效的存储结构就成为了关键。本文主要介绍FMQ消息存储模块设计时考虑的问题，以及解决的思路。<br><a id="more"></a></p>
-<h1 id="1-介绍"><a href="#1-介绍" class="headerlink" title="1 介绍"></a>1 介绍</h1><h2 id="1-1-消息队列与持久化"><a href="#1-1-消息队列与持久化" class="headerlink" title="1.1 消息队列与持久化"></a>1.1 消息队列与持久化</h2><h2 id="1-2-存储模型浅析"><a href="#1-2-存储模型浅析" class="headerlink" title="1.2 存储模型浅析"></a>1.2 存储模型浅析</h2><h1 id="2-FMQ存储逻辑模型"><a href="#2-FMQ存储逻辑模型" class="headerlink" title="2 FMQ存储逻辑模型"></a>2 FMQ存储逻辑模型</h1><h1 id="3-FMQ存储结构设计"><a href="#3-FMQ存储结构设计" class="headerlink" title="3 FMQ存储结构设计"></a>3 FMQ存储结构设计</h1><h2 id="3-1-文件结构设计"><a href="#3-1-文件结构设计" class="headerlink" title="3.1 文件结构设计"></a>3.1 文件结构设计</h2><h3 id="3-1-1-日志文件设计"><a href="#3-1-1-日志文件设计" class="headerlink" title="3.1.1 日志文件设计"></a>3.1.1 日志文件设计</h3><p>日志文件分为header和body两部分，固定总大小为128M。其中头部组成如下图。</p>
+        <p>消息队列如果要做到高可靠且有一定积压能力，则必须要进行持久化。持久化对性能的影响很大，于是如何设计一个可靠而高效的存储结构就成为了关键。本文主要介绍FMQ消息存储模块设计时考虑的问题，以及解决的思路。</p>
+<a id="more"></a>
+<h1>1 介绍</h1>
+<h2 id="1-1-消息队列与持久化"><a class="header-anchor" href="#1-1-消息队列与持久化">¶</a>1.1 消息队列与持久化</h2>
+<h2 id="1-2-存储模型浅析"><a class="header-anchor" href="#1-2-存储模型浅析">¶</a>1.2 存储模型浅析</h2>
+<h1>2 FMQ存储逻辑模型</h1>
+<h1>3 FMQ存储结构设计</h1>
+<h2 id="3-1-文件结构设计"><a class="header-anchor" href="#3-1-文件结构设计">¶</a>3.1 文件结构设计</h2>
+<h3 id="3-1-1-日志文件设计"><a class="header-anchor" href="#3-1-1-日志文件设计">¶</a>3.1.1 日志文件设计</h3>
+<p>日志文件分为header和body两部分，固定总大小为128M。其中头部组成如下图。</p>
 <p><img src="http://cyblog.oss-cn-hangzhou.aliyuncs.com/FMQ%E4%B9%8B%E6%B6%88%E6%81%AF%E5%AD%98%E5%82%A8/%E6%97%A5%E5%BF%97%E6%96%87%E4%BB%B6%E7%BB%93%E6%9E%84.png" alt="日志文件结构"></p>
-<h1 id="4-其他工程优化"><a href="#4-其他工程优化" class="headerlink" title="4 其他工程优化"></a>4 其他工程优化</h1>
+<h1>4 其他工程优化</h1>
+
       
 
       
@@ -368,7 +377,7 @@
                 </span>
                 <span class="tooltip-content">
                     <div class="toc-article">
-                    <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#1-介绍"><span class="toc-number">1.</span> <span class="toc-text">1 介绍</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#1-1-消息队列与持久化"><span class="toc-number">1.1.</span> <span class="toc-text">1.1 消息队列与持久化</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#1-2-存储模型浅析"><span class="toc-number">1.2.</span> <span class="toc-text">1.2 存储模型浅析</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#2-FMQ存储逻辑模型"><span class="toc-number">2.</span> <span class="toc-text">2 FMQ存储逻辑模型</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#3-FMQ存储结构设计"><span class="toc-number">3.</span> <span class="toc-text">3 FMQ存储结构设计</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#3-1-文件结构设计"><span class="toc-number">3.1.</span> <span class="toc-text">3.1 文件结构设计</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-1-日志文件设计"><span class="toc-number">3.1.1.</span> <span class="toc-text">3.1.1 日志文件设计</span></a></li></ol></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#4-其他工程优化"><span class="toc-number">4.</span> <span class="toc-text">4 其他工程优化</span></a></li></ol>
+                    <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#null"><span class="toc-number">1.</span> <span class="toc-text">1 介绍</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#1-1-消息队列与持久化"><span class="toc-number">1.1.</span> <span class="toc-text">¶1.1 消息队列与持久化</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#1-2-存储模型浅析"><span class="toc-number">1.2.</span> <span class="toc-text">¶1.2 存储模型浅析</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#null"><span class="toc-number">2.</span> <span class="toc-text">2 FMQ存储逻辑模型</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#null"><span class="toc-number">3.</span> <span class="toc-text">3 FMQ存储结构设计</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#3-1-文件结构设计"><span class="toc-number">3.1.</span> <span class="toc-text">¶3.1 文件结构设计</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-1-日志文件设计"><span class="toc-number">3.1.1.</span> <span class="toc-text">¶3.1.1 日志文件设计</span></a></li></ol></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#null"><span class="toc-number">4.</span> <span class="toc-text">4 其他工程优化</span></a></li></ol>
                     </div>
                 </span>
             </div>
@@ -525,14 +534,6 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
           <ul class="article-tag-list" q-show="showTags">
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color5">论文研读</a>
-              </li>
-             
-              <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color3">存储</a>
-              </li>
-             
-              <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color4">FMQ</a>
               </li>
              
@@ -541,11 +542,19 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color4">中间件</a>
+                <a href="javascript:void(0)" class="js-tag color5">论文研读</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color3">存储</a>
               </li>
              
               <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color5">java</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color4">中间件</a>
               </li>
              
               <li class="article-tag-list-item">
@@ -565,11 +574,15 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color4">RocketMQ</a>
+              </li>
+             
+              <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color4">jvm</a>
               </li>
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color4">RocketMQ</a>
+                <a href="javascript:void(0)" class="js-tag color4">JVM</a>
               </li>
              
               <li class="article-tag-list-item">
@@ -578,10 +591,6 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
              
               <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color3">计划</a>
-              </li>
-             
-              <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color4">JVM</a>
               </li>
              
               <li class="article-tag-list-item">

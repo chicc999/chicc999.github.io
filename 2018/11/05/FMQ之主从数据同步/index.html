@@ -209,9 +209,14 @@
     
     <div class="article-entry" itemprop="articleBody">
       
-        <p><em>FMQ每组broker分为主从两个角色，支持一主多从。本文主要比较常见消息队列的主从复制逻辑，并且重新设计FMQ的复制逻辑。</em><br><a id="more"></a></p>
-<h1 id="1-他山之石"><a href="#1-他山之石" class="headerlink" title="1. 他山之石"></a>1. 他山之石</h1><p>我们先从市场上开源的消息队列看起，看看他们是如何来设计主从复制的模块。RocketMQ版本为4.2.0-incubating，kafka版本为0.10.1。本文对于具体的实现类，只对核心代码进行分析。</p>
-<h2 id="1-1-RocketMQ"><a href="#1-1-RocketMQ" class="headerlink" title="1.1 RocketMQ"></a>1.1 RocketMQ</h2><h2 id="1-2-Kafka"><a href="#1-2-Kafka" class="headerlink" title="1.2 Kafka"></a>1.2 Kafka</h2><h1 id="2-现有方案"><a href="#2-现有方案" class="headerlink" title="2. 现有方案"></a>2. 现有方案</h1><p><img src="http://cyblog.oss-cn-hangzhou.aliyuncs.com/mqReplication/FMQ%20v2.2.2%20replicate.png" alt="FMQ 2.2.2"></p>
+        <p><em>FMQ每组broker分为主从两个角色，支持一主多从。本文主要比较常见消息队列的主从复制逻辑，并且重新设计FMQ的复制逻辑。</em></p>
+<a id="more"></a>
+<h1>1. 他山之石</h1>
+<p>我们先从市场上开源的消息队列看起，看看他们是如何来设计主从复制的模块。RocketMQ版本为4.2.0-incubating，kafka版本为0.10.1。本文对于具体的实现类，只对核心代码进行分析。</p>
+<h2 id="1-1-RocketMQ"><a class="header-anchor" href="#1-1-RocketMQ">¶</a>1.1 RocketMQ</h2>
+<h2 id="1-2-Kafka"><a class="header-anchor" href="#1-2-Kafka">¶</a>1.2 Kafka</h2>
+<h1>2. 现有方案</h1>
+<p><img src="http://cyblog.oss-cn-hangzhou.aliyuncs.com/mqReplication/FMQ%20v2.2.2%20replicate.png" alt="FMQ 2.2.2"></p>
 <p>模型存在的问题如下：</p>
 <ul>
 <li>slaveReplica给masterReplica回复ack时还没有写盘成功，并不能保证复制成功</li>
@@ -222,11 +227,19 @@
 <ul>
 <li>复制中状态太多，逻辑复杂</li>
 </ul>
-<h1 id="3-新方案"><a href="#3-新方案" class="headerlink" title="3. 新方案"></a>3. 新方案</h1><h2 id="3-1-目标"><a href="#3-1-目标" class="headerlink" title="3.1 目标"></a>3.1 目标</h2><h3 id="3-1-1-关键目标"><a href="#3-1-1-关键目标" class="headerlink" title="3.1.1 关键目标"></a>3.1.1 关键目标</h3><ul>
+<h1>3. 新方案</h1>
+<h2 id="3-1-目标"><a class="header-anchor" href="#3-1-目标">¶</a>3.1 目标</h2>
+<h3 id="3-1-1-关键目标"><a class="header-anchor" href="#3-1-1-关键目标">¶</a>3.1.1 关键目标</h3>
+<ul>
 <li>为了支持异地多活，对多次传输下异地跨机房复制的延迟需要重点考虑。</li>
 <li>强同步模型，一旦配置成同步复制模式，必须等待复制完成或者超时。</li>
 </ul>
-<h4 id="3-1-1-2-平衡性能、可靠性与可用性"><a href="#3-1-1-2-平衡性能、可靠性与可用性" class="headerlink" title="3.1.1.2 平衡性能、可靠性与可用性"></a>3.1.1.2 平衡性能、可靠性与可用性</h4><p>可靠性主要是指在服务器发生故障时，对于已经确认的消息，丢失的可能性。<br>性能则分为两方面，一个是单次请求的响应时间（平均，tp99,max）,一个是整体的吞吐量。<br>可用性则是指，一旦发生故障，多久以后可以恢复服务。由于存在多个broker分片，本文剩下部分的可用性不做特殊说明，专指已经生产但是未被消费的消息多久可以被成功消费。<br>可靠性与性能需求是矛盾的存在。多副本的高可靠性必然会带来响应时间的提升以及系统总体吞吐量的下降。通常来说，单个主从副本可靠性取决于服务器的写盘策略、复制策略与副本策略。<br>其中写盘策略包括：</p>
+<h4 id="3-1-1-2-平衡性能、可靠性与可用性"><a class="header-anchor" href="#3-1-1-2-平衡性能、可靠性与可用性">¶</a>3.1.1.2 平衡性能、可靠性与可用性</h4>
+<p>可靠性主要是指在服务器发生故障时，对于已经确认的消息，丢失的可能性。<br>
+性能则分为两方面，一个是单次请求的响应时间（平均，tp99,max）,一个是整体的吞吐量。<br>
+可用性则是指，一旦发生故障，多久以后可以恢复服务。由于存在多个broker分片，本文剩下部分的可用性不做特殊说明，专指已经生产但是未被消费的消息多久可以被成功消费。<br>
+可靠性与性能需求是矛盾的存在。多副本的高可靠性必然会带来响应时间的提升以及系统总体吞吐量的下降。通常来说，单个主从副本可靠性取决于服务器的写盘策略、复制策略与副本策略。<br>
+其中写盘策略包括：</p>
 <ul>
 <li>消息不写盘，收到请求即回复响应</li>
 <li>消息写进操作系统缓存</li>
@@ -250,39 +263,85 @@
 <li>至少1个本地机房和1个异地机房副本复制成功</li>
 </ul>
 <p>写盘策略、复制策略、副本策略可以自由搭配，在目前主从都在本地的情况下，我们从中选取了几种策略搭配来实现。</p>
-<table border="1"><br>        <tr><br>            <th>序号</th><br>            <th>刷盘策略</th><br>            <th>复制策略</th><br>            <th>副本策略</th><br>            <th>消息丢失场景</th><br>            <th>已生产消息不可消费场景</th><br>        </tr><br>        <tr><br>            <th>1</th><br>            <th>写进操作系统缓存</th><br>            <th rowspan="2">不需要复制</th><br>            <th rowspan="3">单副本成功即成功</th><br>            <th>写磁盘前发生宕机</th><br>            <th>发生宕机或者断电或者机器损坏，消息丢失，永久不可消费</th><br>        </tr><br>        <tr><br>            <th>2</th><br>            <th rowspan="3">写入本地磁盘</th><br>            <th>磁盘损坏</th><br>            <th>磁盘未坏的情况下，主机重启后恢复消费，重启前不提供服务</th><br>        </tr><br>        <tr><br>            <th>3</th><br><br>            <th rowspan="2">slave刷盘成功</th><br>            <th>主从同时机器损坏</th><br>             <th>主从不同时宕机或断网，可以持续提供服务；机房级故障在恢复前不提供服务</th><br>        </tr><br>         <tr><br>            <th>4</th><br><br>            <th>1.有副本存在于本地其他机房或异地机房<p></p><br>2.所有副本复制成功</th><br>             <th>所有服务器磁盘损坏</th><br>              <th>异机房/异地副本在机房级故障仍然保持可用</th><br>        </tr><br>    </table>
+<table border="1">
+        <tr>
+            <th>序号</th>
+            <th>刷盘策略</th>
+            <th>复制策略</th>
+            <th>副本策略</th>
+            <th>消息丢失场景</th>
+            <th>已生产消息不可消费场景</th>
+        </tr>
+        <tr>
+            <th>1</th>
+            <th>写进操作系统缓存</th>
+            <th rowspan="2">不需要复制</th>
+            <th rowspan="3">单副本成功即成功</th>
+            <th>写磁盘前发生宕机</th>
+            <th>发生宕机或者断电或者机器损坏，消息丢失，永久不可消费</th>
+        </tr>
+        <tr>
+            <th>2</th>
+            <th rowspan="3">写入本地磁盘</th>
+            <th>磁盘损坏</th>
+            <th>磁盘未坏的情况下，主机重启后恢复消费，重启前不提供服务</th>
+        </tr>
+        <tr>
+            <th>3</th>
+<pre><code>        &lt;th rowspan=&quot;2&quot;&gt;slave刷盘成功&lt;/th&gt;
+        &lt;th&gt;主从同时机器损坏&lt;/th&gt;
+         &lt;th&gt;主从不同时宕机或断网，可以持续提供服务；机房级故障在恢复前不提供服务&lt;/th&gt;
+    &lt;/tr&gt;
+     &lt;tr&gt;
+        &lt;th&gt;4&lt;/th&gt;
 
-
-
-<h3 id="3-1-2-次要目标"><a href="#3-1-2-次要目标" class="headerlink" title="3.1.2 次要目标"></a>3.1.2 次要目标</h3><ul>
+        &lt;th&gt;1.有副本存在于本地其他机房或异地机房&lt;/p&gt;
+</code></pre>
+<p>2.所有副本复制成功<br>
+<th>所有服务器磁盘损坏</th><br>
+<th>异机房/异地副本在机房级故障仍然保持可用</th><br>
+</p></tr><br>
+</table><p></p>
+<h3 id="3-1-2-次要目标"><a class="header-anchor" href="#3-1-2-次要目标">¶</a>3.1.2 次要目标</h3>
+<ul>
 <li>支持多副本，多台slave</li>
 <li>优化线程模型，生产线程不再等待</li>
 <li>快速失败,连接异常或者slave不可用等能及时被master应用层感知</li>
 </ul>
-<h2 id="3-2-总体方案"><a href="#3-2-总体方案" class="headerlink" title="3.2 总体方案"></a>3.2 总体方案</h2><p>新复制方案的各模块交互时序图如下所示：</p>
+<h2 id="3-2-总体方案"><a class="header-anchor" href="#3-2-总体方案">¶</a>3.2 总体方案</h2>
+<p>新复制方案的各模块交互时序图如下所示：</p>
 <p><img src="http://cyblog.oss-cn-hangzhou.aliyuncs.com/mqReplication/FMQ%20v2.2.3%20Replicate.png" alt="FMQ 2.2.3"></p>
-<h3 id="3-2-1-生产模型"><a href="#3-2-1-生产模型" class="headerlink" title="3.2.1 生产模型"></a>3.2.1 生产模型</h3><p>如方案中步骤1所示，putMessageHandler在接收到生产者的请求以后：</p>
+<h3 id="3-2-1-生产模型"><a class="header-anchor" href="#3-2-1-生产模型">¶</a>3.2.1 生产模型</h3>
+<p>如方案中步骤1所示，putMessageHandler在接收到生产者的请求以后：</p>
 <ul>
 <li>调用store模块将消息写进内存映射文件，更新wrtitePosition</li>
 <li>通知复制模块有新消息到来</li>
 </ul>
 <p>在此之后，putMessageHandler的生命周期就宣告结束，不再等待生产结果的返回。而存储模块store在写进内存文件以后，会将请求保存到复制管理器中。由于是顺序刷盘，所以消息被按照在日志中的顺序保存在replicationManager中。</p>
 <p>由于可靠性要求，store模块必须强制进行刷盘，并在写盘成功后通知将刷盘位置通知给replicationManager。在实际实现中此处采用组提交技术，即刷盘线程不对每个请求刷盘，而是直接批量写入以后刷盘，只进行一次IO。</p>
-<h3 id="3-2-2-master复制模型"><a href="#3-2-2-master复制模型" class="headerlink" title="3.2.2 master复制模型"></a>3.2.2 master复制模型</h3><h3 id="3-2-2-1-write"><a href="#3-2-2-1-write" class="headerlink" title="3.2.2.1 write"></a>3.2.2.1 write</h3><p>HAmaster的写出服务可能处于2个状态，inSync和outOfSync。</p>
+<h3 id="3-2-2-master复制模型"><a class="header-anchor" href="#3-2-2-master复制模型">¶</a>3.2.2 master复制模型</h3>
+<h3 id="3-2-2-1-write"><a class="header-anchor" href="#3-2-2-1-write">¶</a>3.2.2.1 write</h3>
+<p>HAmaster的写出服务可能处于2个状态，inSync和outOfSync。</p>
 <ul>
 <li>outOfSync：复制模块处于未完全同步状态，即发现日志的writePostion大于slave已经复制的位置时，会持续的将日志写出。</li>
 <li>inSync：此时代表主从日志已经完全一致，此时写服务等待putMessageHandler给予有新消息需要同步的信号量。</li>
 </ul>
 <p>无论出于哪种模式，均为异步写出，且不用slave回复响应。以此做到连续写入，避免异地网络下的高延迟。</p>
-<h3 id="3-2-2-2-read"><a href="#3-2-2-2-read" class="headerlink" title="3.2.2.2 read"></a>3.2.2.2 read</h3><p>HAmaster的读模块收到slave上报的刷盘位置后，更新内存里保存的slave的复制位置，并且通知replicationManager模块从节点的复制位置已经更新。</p>
-<h3 id="3-2-3-slave复制模型"><a href="#3-2-3-slave复制模型" class="headerlink" title="3.2.3 slave复制模型"></a>3.2.3 slave复制模型</h3><h3 id="3-2-3-1-read"><a href="#3-2-3-1-read" class="headerlink" title="3.2.3.1 read"></a>3.2.3.1 read</h3><p>slave收到master发送过来的日志以后，根据自身的策略进行刷盘操作。逻辑同master。</p>
-<h3 id="3-2-3-2-write"><a href="#3-2-3-2-write" class="headerlink" title="3.2.3.2 write"></a>3.2.3.2 write</h3><p>由于底层采用tcp协议保证了日志的顺序到达，所以多个响应只用回复最后刷盘的位置。由此slave并不主动对master的每一次请求进行相应。此处同样采用组提交技术，只有每次批量刷盘成功(对异步写盘是append成功)，才会回复一个相应表明写盘位置。</p>
-<h3 id="3-2-3-副本管理模块"><a href="#3-2-3-副本管理模块" class="headerlink" title="3.2.3 副本管理模块"></a>3.2.3 副本管理模块</h3><ul>
+<h3 id="3-2-2-2-read"><a class="header-anchor" href="#3-2-2-2-read">¶</a>3.2.2.2 read</h3>
+<p>HAmaster的读模块收到slave上报的刷盘位置后，更新内存里保存的slave的复制位置，并且通知replicationManager模块从节点的复制位置已经更新。</p>
+<h3 id="3-2-3-slave复制模型"><a class="header-anchor" href="#3-2-3-slave复制模型">¶</a>3.2.3 slave复制模型</h3>
+<h3 id="3-2-3-1-read"><a class="header-anchor" href="#3-2-3-1-read">¶</a>3.2.3.1 read</h3>
+<p>slave收到master发送过来的日志以后，根据自身的策略进行刷盘操作。逻辑同master。</p>
+<h3 id="3-2-3-2-write"><a class="header-anchor" href="#3-2-3-2-write">¶</a>3.2.3.2 write</h3>
+<p>由于底层采用tcp协议保证了日志的顺序到达，所以多个响应只用回复最后刷盘的位置。由此slave并不主动对master的每一次请求进行相应。此处同样采用组提交技术，只有每次批量刷盘成功(对异步写盘是append成功)，才会回复一个相应表明写盘位置。</p>
+<h3 id="3-2-3-副本管理模块"><a class="header-anchor" href="#3-2-3-副本管理模块">¶</a>3.2.3 副本管理模块</h3>
+<ul>
 <li>replicationManager中维护了全局的水位信息，每个slave复制位置更新，此模块都会得到通知。</li>
 <li>水位如何更新取决于具体的策略。第一个版本暂时采用至少保证一个副本更新成功。</li>
 <li>由于store模块是根据刷盘位置将请求顺序提交到本模块，所以在水位更新以后，从前至后，将处于水位线以下的请求全部回复。</li>
 </ul>
-<h2 id="3-3-特殊处理的场景"><a href="#3-3-特殊处理的场景" class="headerlink" title="3.3 特殊处理的场景"></a>3.3 特殊处理的场景</h2><ul>
+<h2 id="3-3-特殊处理的场景"><a class="header-anchor" href="#3-3-特殊处理的场景">¶</a>3.3 特殊处理的场景</h2>
+<ul>
 <li>slave所请求复制的日志已经被master删除。</li>
 <li>由于刷盘和复制同时进行，复制成功时未写盘成功，master重启后未写盘部分丢失，主从不一致。</li>
 <li>由于异步复制，当网络故障但是应用层未发现时，会持续不断写出，堆积在本地堆外内存，有把内存用尽的风险。需要加上滑动窗口的概念或者进行限流。</li>
@@ -290,7 +349,10 @@
 <li>主从复制网络发生故障时，迅速被应用层感知并回复的方案。</li>
 <li>新的slave无数据启动时复制太快打满网络，影响正常业务。</li>
 </ul>
-<h1 id="4-实现"><a href="#4-实现" class="headerlink" title="4 实现"></a>4 实现</h1><h2 id="4-1-启动"><a href="#4-1-启动" class="headerlink" title="4.1 启动"></a>4.1 启动</h2><h3 id="4-1-slave启动"><a href="#4-1-slave启动" class="headerlink" title="4.1 slave启动"></a>4.1 slave启动</h3><ul>
+<h1>4 实现</h1>
+<h2 id="4-1-启动"><a class="header-anchor" href="#4-1-启动">¶</a>4.1 启动</h2>
+<h3 id="4-1-slave启动"><a class="header-anchor" href="#4-1-slave启动">¶</a>4.1 slave启动</h3>
+<ul>
 <li>connect</li>
 </ul>
 <p>slave主动发送请求的触发事件如下：</p>
@@ -305,8 +367,11 @@
 <li>NONE</li>
 <li>CONNECTED</li>
 </ul>
-<h1 id="4-测试方案及结果"><a href="#4-测试方案及结果" class="headerlink" title="4 测试方案及结果"></a>4 测试方案及结果</h1><h2 id="4-1-测试方案"><a href="#4-1-测试方案" class="headerlink" title="4.1 测试方案"></a>4.1 测试方案</h2><p>在重写复制模块之前，为了验证效果，必须要有横向和纵向的性能测试，比较FMQ的新版本和老版本、kafka、RocketMQ之间的性能差异。</p>
-<h3 id="4-1-1-硬件需求"><a href="#4-1-1-硬件需求" class="headerlink" title="4.1.1 硬件需求"></a>4.1.1 硬件需求</h3><table>
+<h1>4 测试方案及结果</h1>
+<h2 id="4-1-测试方案"><a class="header-anchor" href="#4-1-测试方案">¶</a>4.1 测试方案</h2>
+<p>在重写复制模块之前，为了验证效果，必须要有横向和纵向的性能测试，比较FMQ的新版本和老版本、kafka、RocketMQ之间的性能差异。</p>
+<h3 id="4-1-1-硬件需求"><a class="header-anchor" href="#4-1-1-硬件需求">¶</a>4.1.1 硬件需求</h3>
+<table>
 <thead>
 <tr>
 <th style="text-align:center">物理机数量</th>
@@ -326,16 +391,20 @@
 </tr>
 </tbody>
 </table>
-<h3 id="4-1-2-环境版本"><a href="#4-1-2-环境版本" class="headerlink" title="4.1.2 环境版本"></a>4.1.2 环境版本</h3><ul>
+<h3 id="4-1-2-环境版本"><a class="header-anchor" href="#4-1-2-环境版本">¶</a>4.1.2 环境版本</h3>
+<ul>
 <li>JDK8</li>
 <li>换G1搜集器做纵向测试（对比FMQ 2.2.2和2.2.3）</li>
 </ul>
-<h3 id="4-1-3-软件版本"><a href="#4-1-3-软件版本" class="headerlink" title="4.1.3 软件版本"></a>4.1.3 软件版本</h3><ul>
+<h3 id="4-1-3-软件版本"><a class="header-anchor" href="#4-1-3-软件版本">¶</a>4.1.3 软件版本</h3>
+<ul>
 <li>FMQ 2.2.2</li>
 <li>RocketMQ 4.2.0-incubating</li>
 <li>kafka 0.10.1.0</li>
 </ul>
-<h3 id="4-1-4-测试指标"><a href="#4-1-4-测试指标" class="headerlink" title="4.1.4 测试指标"></a>4.1.4 测试指标</h3><h4 id="机器指标"><a href="#机器指标" class="headerlink" title="机器指标"></a>机器指标</h4><ul>
+<h3 id="4-1-4-测试指标"><a class="header-anchor" href="#4-1-4-测试指标">¶</a>4.1.4 测试指标</h3>
+<h4 id="机器指标"><a class="header-anchor" href="#机器指标">¶</a>机器指标</h4>
+<ul>
 <li>cpu使用率</li>
 <li>内存使用率</li>
 <li>磁盘使用率</li>
@@ -345,7 +414,8 @@
 <li>磁盘I/O等待时间</li>
 <li>网络IO流量</li>
 </ul>
-<h4 id="虚拟机指标"><a href="#虚拟机指标" class="headerlink" title="虚拟机指标"></a>虚拟机指标</h4><ul>
+<h4 id="虚拟机指标"><a class="header-anchor" href="#虚拟机指标">¶</a>虚拟机指标</h4>
+<ul>
 <li>堆内存占用</li>
 <li>堆外内存占用</li>
 <li>FGC次数</li>
@@ -353,39 +423,68 @@
 <li>YGC次数</li>
 <li>YGC消耗时间</li>
 </ul>
-<h4 id="业务指标"><a href="#业务指标" class="headerlink" title="业务指标"></a>业务指标</h4><ul>
+<h4 id="业务指标"><a class="header-anchor" href="#业务指标">¶</a>业务指标</h4>
+<ul>
 <li>TPS</li>
 <li>正确率</li>
 <li>平均响应时间</li>
 <li>TP99</li>
 <li>TP999</li>
 </ul>
-<h3 id="4-1-5-测试场景"><a href="#4-1-5-测试场景" class="headerlink" title="4.1.5 测试场景"></a>4.1.5 测试场景</h3><ul>
+<h3 id="4-1-5-测试场景"><a class="header-anchor" href="#4-1-5-测试场景">¶</a>4.1.5 测试场景</h3>
+<ul>
 <li>主题数量分别为1、8、16、64、128、256</li>
 <li>消息大小分别为100、1K、10K</li>
 <li>分别测试只有生产者和既生产又消费</li>
 <li>分别测试同步写盘同步复制/异步写盘异步复制/同步写盘异步复制的场景</li>
 <li>关闭内存映射文件或者模拟内存映射文件可用内存耗尽，重复以上测试</li>
 </ul>
-<h2 id="4-2-测试结果"><a href="#4-2-测试结果" class="headerlink" title="4.2 测试结果"></a>4.2 测试结果</h2><h1 id="1-启动"><a href="#1-启动" class="headerlink" title="1. 启动"></a>1. 启动</h1><h1 id="2-数据复制"><a href="#2-数据复制" class="headerlink" title="2. 数据复制"></a>2. 数据复制</h1><h2 id="2-1-日志复制"><a href="#2-1-日志复制" class="headerlink" title="2.1 日志复制"></a>2.1 日志复制</h2><ul>
+<h2 id="4-2-测试结果"><a class="header-anchor" href="#4-2-测试结果">¶</a>4.2 测试结果</h2>
+<h1>1. 启动</h1>
+<h1>2. 数据复制</h1>
+<h2 id="2-1-日志复制"><a class="header-anchor" href="#2-1-日志复制">¶</a>2.1 日志复制</h2>
+<ul>
 <li>slave和master成功建立连接。</li>
 <li>slave向master发送getOffset请求（请求中包含本地日志文件的最大偏移量）。</li>
 <li>master根据slave发送过来的最大偏移量，返回一个合适的日志复制起始位置。master回复response包含起始复制offset和日志最大偏移量journalMaxOffset。</li>
 </ul>
-<h2 id="2-1-索引日志重建"><a href="#2-1-索引日志重建" class="headerlink" title="2.1 索引日志重建"></a>2.1 索引日志重建</h2><p>主从同步时只会对日志文件和消费者索引文件同步，而不会对topic的队列索引文件同步。队列索引文件可以通过日志文件进行重建，所以在数据复制过程中，还伴随索引重建的过程。</p>
-<p>主同步写 从同步写 同步复制  515827746044  5030156749<br>主同步写 从异步写 同步复制 489286538634 4820965279<br>主同步写 异步复制 459666435471 4592010419<br>主异步写 异步复制 450988999057  4516827988</p>
-<p>老的：223400348546,2752498288<br>229808750761,2809920954</p>
+<h2 id="2-1-索引日志重建"><a class="header-anchor" href="#2-1-索引日志重建">¶</a>2.1 索引日志重建</h2>
+<p>主从同步时只会对日志文件和消费者索引文件同步，而不会对topic的队列索引文件同步。队列索引文件可以通过日志文件进行重建，所以在数据复制过程中，还伴随索引重建的过程。</p>
+<p>主同步写 从同步写 同步复制  515827746044  5030156749<br>
+主同步写 从异步写 同步复制 489286538634 4820965279<br>
+主同步写 异步复制 459666435471 4592010419<br>
+主异步写 异步复制 450988999057  4516827988</p>
+<p>老的：223400348546,2752498288<br>
+229808750761,2809920954</p>
 <p>947850824029,real time:8310501899</p>
 <p>time:69766695289,real time:1531485532</p>
-<p>10000<br>time:345654594265,real time:3690327844<br>time:283583796196,real time:3224191788<br>async 1000<br>time:1247319800128,real time:2275504451<br>time:1263226311816,real time:2330461289<br>time:1090638775943,real time:2206534433</p>
-<p>1000000<br>time:19826532699459,real time:155001078558</p>
-<p>10000<br>time:253322531752,real time:2994229703<br>time:219039922713,real time:2731940218<br>time:210464167466,real time:2649546572<br>async 1000<br>time:1554510999949,real time:2619580072</p>
-<p>1000000<br>time:17006810269940,real time:133089334587</p>
-<p>time:211586309922,real time:2665997080<br>time:210125364401,real time:2657382138<br>async 10000<br>time:1553105267525,real time:2577609676</p>
-<p>time:15473071322019,real time:121222580167<br>time:15701064759088,real time:123106755027</p>
+<p>10000<br>
+time:345654594265,real time:3690327844<br>
+time:283583796196,real time:3224191788<br>
+async 1000<br>
+time:1247319800128,real time:2275504451<br>
+time:1263226311816,real time:2330461289<br>
+time:1090638775943,real time:2206534433</p>
+<p>1000000<br>
+time:19826532699459,real time:155001078558</p>
+<p>10000<br>
+time:253322531752,real time:2994229703<br>
+time:219039922713,real time:2731940218<br>
+time:210464167466,real time:2649546572<br>
+async 1000<br>
+time:1554510999949,real time:2619580072</p>
+<p>1000000<br>
+time:17006810269940,real time:133089334587</p>
+<p>time:211586309922,real time:2665997080<br>
+time:210125364401,real time:2657382138<br>
+async 10000<br>
+time:1553105267525,real time:2577609676</p>
+<p>time:15473071322019,real time:121222580167<br>
+time:15701064759088,real time:123106755027</p>
 <ul>
 <li>复制事件改为一个请求一个</li>
-<li>从消费<ul>
+<li>从消费
+<ul>
 <li>主断开后从一直重启</li>
 <li>主重启后无法被继续生产</li>
 </ul>
@@ -550,7 +649,7 @@
                 </span>
                 <span class="tooltip-content">
                     <div class="toc-article">
-                    <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#1-他山之石"><span class="toc-number">1.</span> <span class="toc-text">1. 他山之石</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#1-1-RocketMQ"><span class="toc-number">1.1.</span> <span class="toc-text">1.1 RocketMQ</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#1-2-Kafka"><span class="toc-number">1.2.</span> <span class="toc-text">1.2 Kafka</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#2-现有方案"><span class="toc-number">2.</span> <span class="toc-text">2. 现有方案</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#3-新方案"><span class="toc-number">3.</span> <span class="toc-text">3. 新方案</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#3-1-目标"><span class="toc-number">3.1.</span> <span class="toc-text">3.1 目标</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-1-关键目标"><span class="toc-number">3.1.1.</span> <span class="toc-text">3.1.1 关键目标</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#3-1-1-2-平衡性能、可靠性与可用性"><span class="toc-number">3.1.1.1.</span> <span class="toc-text">3.1.1.2 平衡性能、可靠性与可用性</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-2-次要目标"><span class="toc-number">3.1.2.</span> <span class="toc-text">3.1.2 次要目标</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-2-总体方案"><span class="toc-number">3.2.</span> <span class="toc-text">3.2 总体方案</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-1-生产模型"><span class="toc-number">3.2.1.</span> <span class="toc-text">3.2.1 生产模型</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-2-master复制模型"><span class="toc-number">3.2.2.</span> <span class="toc-text">3.2.2 master复制模型</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-2-1-write"><span class="toc-number">3.2.3.</span> <span class="toc-text">3.2.2.1 write</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-2-2-read"><span class="toc-number">3.2.4.</span> <span class="toc-text">3.2.2.2 read</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-3-slave复制模型"><span class="toc-number">3.2.5.</span> <span class="toc-text">3.2.3 slave复制模型</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-3-1-read"><span class="toc-number">3.2.6.</span> <span class="toc-text">3.2.3.1 read</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-3-2-write"><span class="toc-number">3.2.7.</span> <span class="toc-text">3.2.3.2 write</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-3-副本管理模块"><span class="toc-number">3.2.8.</span> <span class="toc-text">3.2.3 副本管理模块</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-3-特殊处理的场景"><span class="toc-number">3.3.</span> <span class="toc-text">3.3 特殊处理的场景</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#4-实现"><span class="toc-number">4.</span> <span class="toc-text">4 实现</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#4-1-启动"><span class="toc-number">4.1.</span> <span class="toc-text">4.1 启动</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-slave启动"><span class="toc-number">4.1.1.</span> <span class="toc-text">4.1 slave启动</span></a></li></ol></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#4-测试方案及结果"><span class="toc-number">5.</span> <span class="toc-text">4 测试方案及结果</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#4-1-测试方案"><span class="toc-number">5.1.</span> <span class="toc-text">4.1 测试方案</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-1-硬件需求"><span class="toc-number">5.1.1.</span> <span class="toc-text">4.1.1 硬件需求</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-2-环境版本"><span class="toc-number">5.1.2.</span> <span class="toc-text">4.1.2 环境版本</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-3-软件版本"><span class="toc-number">5.1.3.</span> <span class="toc-text">4.1.3 软件版本</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-4-测试指标"><span class="toc-number">5.1.4.</span> <span class="toc-text">4.1.4 测试指标</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#机器指标"><span class="toc-number">5.1.4.1.</span> <span class="toc-text">机器指标</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#虚拟机指标"><span class="toc-number">5.1.4.2.</span> <span class="toc-text">虚拟机指标</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#业务指标"><span class="toc-number">5.1.4.3.</span> <span class="toc-text">业务指标</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-5-测试场景"><span class="toc-number">5.1.5.</span> <span class="toc-text">4.1.5 测试场景</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4-2-测试结果"><span class="toc-number">5.2.</span> <span class="toc-text">4.2 测试结果</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#1-启动"><span class="toc-number">6.</span> <span class="toc-text">1. 启动</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#2-数据复制"><span class="toc-number">7.</span> <span class="toc-text">2. 数据复制</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#2-1-日志复制"><span class="toc-number">7.1.</span> <span class="toc-text">2.1 日志复制</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-1-索引日志重建"><span class="toc-number">7.2.</span> <span class="toc-text">2.1 索引日志重建</span></a></li></ol></li></ol>
+                    <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#null"><span class="toc-number">1.</span> <span class="toc-text">1. 他山之石</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#1-1-RocketMQ"><span class="toc-number">1.1.</span> <span class="toc-text">¶1.1 RocketMQ</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#1-2-Kafka"><span class="toc-number">1.2.</span> <span class="toc-text">¶1.2 Kafka</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#null"><span class="toc-number">2.</span> <span class="toc-text">2. 现有方案</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#null"><span class="toc-number">3.</span> <span class="toc-text">3. 新方案</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#3-1-目标"><span class="toc-number">3.1.</span> <span class="toc-text">¶3.1 目标</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-1-关键目标"><span class="toc-number">3.1.1.</span> <span class="toc-text">¶3.1.1 关键目标</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#3-1-1-2-平衡性能、可靠性与可用性"><span class="toc-number">3.1.1.1.</span> <span class="toc-text">¶3.1.1.2 平衡性能、可靠性与可用性</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-2-次要目标"><span class="toc-number">3.1.2.</span> <span class="toc-text">¶3.1.2 次要目标</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-2-总体方案"><span class="toc-number">3.2.</span> <span class="toc-text">¶3.2 总体方案</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-1-生产模型"><span class="toc-number">3.2.1.</span> <span class="toc-text">¶3.2.1 生产模型</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-2-master复制模型"><span class="toc-number">3.2.2.</span> <span class="toc-text">¶3.2.2 master复制模型</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-2-1-write"><span class="toc-number">3.2.3.</span> <span class="toc-text">¶3.2.2.1 write</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-2-2-read"><span class="toc-number">3.2.4.</span> <span class="toc-text">¶3.2.2.2 read</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-3-slave复制模型"><span class="toc-number">3.2.5.</span> <span class="toc-text">¶3.2.3 slave复制模型</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-3-1-read"><span class="toc-number">3.2.6.</span> <span class="toc-text">¶3.2.3.1 read</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-3-2-write"><span class="toc-number">3.2.7.</span> <span class="toc-text">¶3.2.3.2 write</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-3-副本管理模块"><span class="toc-number">3.2.8.</span> <span class="toc-text">¶3.2.3 副本管理模块</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-3-特殊处理的场景"><span class="toc-number">3.3.</span> <span class="toc-text">¶3.3 特殊处理的场景</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#null"><span class="toc-number">4.</span> <span class="toc-text">4 实现</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#4-1-启动"><span class="toc-number">4.1.</span> <span class="toc-text">¶4.1 启动</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-slave启动"><span class="toc-number">4.1.1.</span> <span class="toc-text">¶4.1 slave启动</span></a></li></ol></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#null"><span class="toc-number">5.</span> <span class="toc-text">4 测试方案及结果</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#4-1-测试方案"><span class="toc-number">5.1.</span> <span class="toc-text">¶4.1 测试方案</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-1-硬件需求"><span class="toc-number">5.1.1.</span> <span class="toc-text">¶4.1.1 硬件需求</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-2-环境版本"><span class="toc-number">5.1.2.</span> <span class="toc-text">¶4.1.2 环境版本</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-3-软件版本"><span class="toc-number">5.1.3.</span> <span class="toc-text">¶4.1.3 软件版本</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-4-测试指标"><span class="toc-number">5.1.4.</span> <span class="toc-text">¶4.1.4 测试指标</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#机器指标"><span class="toc-number">5.1.4.1.</span> <span class="toc-text">¶机器指标</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#虚拟机指标"><span class="toc-number">5.1.4.2.</span> <span class="toc-text">¶虚拟机指标</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#业务指标"><span class="toc-number">5.1.4.3.</span> <span class="toc-text">¶业务指标</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-5-测试场景"><span class="toc-number">5.1.5.</span> <span class="toc-text">¶4.1.5 测试场景</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4-2-测试结果"><span class="toc-number">5.2.</span> <span class="toc-text">¶4.2 测试结果</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#null"><span class="toc-number">6.</span> <span class="toc-text">1. 启动</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#null"><span class="toc-number">7.</span> <span class="toc-text">2. 数据复制</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#2-1-日志复制"><span class="toc-number">7.1.</span> <span class="toc-text">¶2.1 日志复制</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-1-索引日志重建"><span class="toc-number">7.2.</span> <span class="toc-text">¶2.1 索引日志重建</span></a></li></ol></li></ol>
                     </div>
                 </span>
             </div>
@@ -707,14 +806,6 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
           <ul class="article-tag-list" q-show="showTags">
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color5">论文研读</a>
-              </li>
-             
-              <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color3">存储</a>
-              </li>
-             
-              <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color4">FMQ</a>
               </li>
              
@@ -723,11 +814,19 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color4">中间件</a>
+                <a href="javascript:void(0)" class="js-tag color5">论文研读</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color3">存储</a>
               </li>
              
               <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color5">java</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color4">中间件</a>
               </li>
              
               <li class="article-tag-list-item">
@@ -747,11 +846,15 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color4">RocketMQ</a>
+              </li>
+             
+              <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color4">jvm</a>
               </li>
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color4">RocketMQ</a>
+                <a href="javascript:void(0)" class="js-tag color4">JVM</a>
               </li>
              
               <li class="article-tag-list-item">
@@ -760,10 +863,6 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
              
               <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color3">计划</a>
-              </li>
-             
-              <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color4">JVM</a>
               </li>
              
               <li class="article-tag-list-item">

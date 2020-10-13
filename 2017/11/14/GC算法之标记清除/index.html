@@ -209,59 +209,96 @@
     
     <div class="article-entry" itemprop="articleBody">
       
-        <p><em>《垃圾回收的算法与实现》的读书笔记与总结。本文介绍世界上首个值得纪念的GC算法— Mark Sweep GC。</em><br><a id="more"></a></p>
-<h2 id="1-算法简介"><a href="#1-算法简介" class="headerlink" title="1 算法简介"></a>1 算法简介</h2><p>GC 标记- 清除算法由标记阶段和清除阶段构成,伪代码如下：</p>
+        <p><em>《垃圾回收的算法与实现》的读书笔记与总结。本文介绍世界上首个值得纪念的GC算法— Mark Sweep GC。</em></p>
+<a id="more"></a>
+<h2 id="1-算法简介"><a class="header-anchor" href="#1-算法简介">¶</a>1 算法简介</h2>
+<p>GC 标记- 清除算法由标记阶段和清除阶段构成,伪代码如下：</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mark_sweep()&#123;  mark_phase()  sweep_phase()&#125;</span><br></pre></td></tr></table></figure>
-<h3 id="1-1-标记阶段"><a href="#1-1-标记阶段" class="headerlink" title="1.1 标记阶段"></a>1.1 标记阶段</h3><p>核心就是“遍历标记对象”。从根域出发，遍历所有的对象，把所有活动的对象打上标记。</p>
+<h3 id="1-1-标记阶段"><a class="header-anchor" href="#1-1-标记阶段">¶</a>1.1 标记阶段</h3>
+<p>核心就是“遍历标记对象”。从根域出发，遍历所有的对象，把所有活动的对象打上标记。</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mark_phase()&#123;    for(r : $roots)  	mark(*r)&#125;</span><br></pre></td></tr></table></figure>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mark(obj)&#123;  if(obj.mark == FALSE)    obj.mark = TRUE	for(child : children(obj))&#123;		mark(*child)	&#125;&#125;</span><br></pre></td></tr></table></figure>
-<p>在标记阶段中，程序会标记所有活动对象。显然，标记所花费的时间与“活动对象的总数”成正比。<br>比较一下内存使用量（已存储的对象数量）就可以知道，深度优先搜索比广度优先<br>搜索更能压低内存使用量。因此我们在标记阶段经常用到深度优先搜索。</p>
-<h3 id="1-2-清除阶段"><a href="#1-2-清除阶段" class="headerlink" title="1.2 清除阶段"></a>1.2 清除阶段</h3><p>在清除阶段中，collector 会遍历整个堆，回收没有打上标记的对象（即垃圾），使其能再次得到利用。<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sweep_phase()&#123;	sweeping = $heap_start;	while(sweeping &lt; $heap_end)		if(sweeping.mark == TRUE)&#123;			sweeping.mark = FALSE;		&#125;else&#123;			sweeping.next = $free_list;			$free_list = sweeping;			&#125;		sweeping += sweeping.size;&#125;</span><br></pre></td></tr></table></figure></p>
+<p>在标记阶段中，程序会标记所有活动对象。显然，标记所花费的时间与“活动对象的总数”成正比。<br>
+比较一下内存使用量（已存储的对象数量）就可以知道，深度优先搜索比广度优先<br>
+搜索更能压低内存使用量。因此我们在标记阶段经常用到深度优先搜索。</p>
+<h3 id="1-2-清除阶段"><a class="header-anchor" href="#1-2-清除阶段">¶</a>1.2 清除阶段</h3>
+<p>在清除阶段中，collector 会遍历整个堆，回收没有打上标记的对象（即垃圾），使其能再次得到利用。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sweep_phase()&#123;	sweeping = $heap_start;	while(sweeping &lt; $heap_end)		if(sweeping.mark == TRUE)&#123;			sweeping.mark = FALSE;		&#125;else&#123;			sweeping.next = $free_list;			$free_list = sweeping;			&#125;		sweeping += sweeping.size;&#125;</span><br></pre></td></tr></table></figure>
 <p>sweeping是从堆首地址$heap_start开始，按顺序一个个遍历对象的标志位。如果是活动对象，就取消标志位，等待下一次标记；不如不是标志位</p>
-<h3 id="1-3-分配"><a href="#1-3-分配" class="headerlink" title="1.3 分配"></a>1.3 分配</h3><p>在清除阶段已经把垃圾对象连接到空闲链表了。搜索空闲链表并寻找大小合适的分块，这项操作就叫作分配。<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">new_obj(size)&#123;	chunk = pickup_chunk(size, $free_list);	if(chunk != NULL)		return chunk;	else		allocation_fail();&#125;</span><br></pre></td></tr></table></figure></p>
+<h3 id="1-3-分配"><a class="header-anchor" href="#1-3-分配">¶</a>1.3 分配</h3>
+<p>在清除阶段已经把垃圾对象连接到空闲链表了。搜索空闲链表并寻找大小合适的分块，这项操作就叫作分配。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">new_obj(size)&#123;	chunk = pickup_chunk(size, $free_list);	if(chunk != NULL)		return chunk;	else		allocation_fail();&#125;</span><br></pre></td></tr></table></figure>
 <p>pickup_chunk() 函数用于遍历$free_list，寻找大于等于size 的分块。如果此函数没有找到合适的分块，则会返回NULL。</p>
-<h4 id="分配算法"><a href="#分配算法" class="headerlink" title="分配算法"></a>分配算法</h4><ul>
-<li>First - fit<br>  最初发现大于等于size 的分块时就会立即返回该分块;如果它找到比size 大的分块，则会将其分割成size 大小的分块和去掉size 后剩余大小的分块，并把剩余的分块返回空闲链表。</li>
-<li>Best - fit<br>  有遍历空闲链表，返回大于等于size 的最小分块.</li>
-<li>Worst - fit<br>  找出空闲链表中最大的分块，将其分割成mutator 申请的大小和分割后剩余的大小，目的是将分割后剩余的分块最大化。</li>
+<h4 id="分配算法"><a class="header-anchor" href="#分配算法">¶</a>分配算法</h4>
+<ul>
+<li>First - fit<br>
+最初发现大于等于size 的分块时就会立即返回该分块;如果它找到比size 大的分块，则会将其分割成size 大小的分块和去掉size 后剩余大小的分块，并把剩余的分块返回空闲链表。</li>
+<li>Best - fit<br>
+有遍历空闲链表，返回大于等于size 的最小分块.</li>
+<li>Worst - fit<br>
+找出空闲链表中最大的分块，将其分割成mutator 申请的大小和分割后剩余的大小，目的是将分割后剩余的分块最大化。</li>
 </ul>
-<h3 id="1-4-合并"><a href="#1-4-合并" class="headerlink" title="1.4 合并"></a>1.4 合并</h3><p>根据分配策略的不同可能会产生大量的小分块。如果它们是连续的，就能把所有的小分块连在一起形成一个大分块。合并是在清除阶段进行的。加入合并功能的清扫函数如下，只在发现当前内存需要被清理时，判断是否和上一块连续，如果连续则合并成同一块。<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">sweep_phase()&#123;	sweeping = $heap_start;	while(sweeping &lt; $heap_end)&#123;		if(sweeping.mark == TRUE)			sweeping.mark = FALSE;		else &#123;			if(sweeping == $free_list + $free_list.size)				$free_list.size += sweeping.size;			else &#123;</span><br><span class="line">				sweeping.next = $free_list;				$free_list = sweeping;</span><br><span class="line">            &#125;		sweeping += sweeping.size;	&#125;&#125;</span><br></pre></td></tr></table></figure></p>
-<h2 id="2-优缺点"><a href="#2-优缺点" class="headerlink" title="2 优缺点"></a>2 优缺点</h2><h3 id="2-1-优点"><a href="#2-1-优点" class="headerlink" title="2.1 优点"></a>2.1 优点</h3><ul>
+<h3 id="1-4-合并"><a class="header-anchor" href="#1-4-合并">¶</a>1.4 合并</h3>
+<p>根据分配策略的不同可能会产生大量的小分块。如果它们是连续的，就能把所有的小分块连在一起形成一个大分块。合并是在清除阶段进行的。加入合并功能的清扫函数如下，只在发现当前内存需要被清理时，判断是否和上一块连续，如果连续则合并成同一块。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">sweep_phase()&#123;	sweeping = $heap_start;	while(sweeping &lt; $heap_end)&#123;		if(sweeping.mark == TRUE)			sweeping.mark = FALSE;		else &#123;			if(sweeping == $free_list + $free_list.size)				$free_list.size += sweeping.size;			else &#123;</span><br><span class="line">				sweeping.next = $free_list;				$free_list = sweeping;</span><br><span class="line">            &#125;		sweeping += sweeping.size;	&#125;&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="2-优缺点"><a class="header-anchor" href="#2-优缺点">¶</a>2 优缺点</h2>
+<h3 id="2-1-优点"><a class="header-anchor" href="#2-1-优点">¶</a>2.1 优点</h3>
+<ul>
 <li>实现简单</li>
 <li>与保守式GC算法（对象不能被移动)兼容</li>
 </ul>
-<h3 id="2-2-缺点"><a href="#2-2-缺点" class="headerlink" title="2.2 缺点"></a>2.2 缺点</h3><h4 id="2-2-1-碎片化"><a href="#2-2-1-碎片化" class="headerlink" title="2.2.1 碎片化"></a>2.2.1 碎片化</h4><p>由分配算法可知标记-清除法或多或少会发生碎片化。如果发生碎片化，那么即使堆中分块的总大小够用，也会因为一个个的分块都太小而不能执行分配。</p>
-<h4 id="2-2-2-分配速度"><a href="#2-2-2-分配速度" class="headerlink" title="2.2.2 分配速度"></a>2.2.2 分配速度</h4><p>GC标记- 清除算法中分块不是连续的，因此每次分配都必须遍历空闲链表，找到足够大的分块。最糟的情况就是每次进行分配都得把空闲链表遍历到最后。</p>
-<h4 id="2-2-3-与copy-on-write不兼容"><a href="#2-2-3-与copy-on-write不兼容" class="headerlink" title="2.2.3 与copy-on-write不兼容"></a>2.2.3 与copy-on-write不兼容</h4><p>写时复制技术的优势在于，fork进程的时候，内存空间是引用而不是复制。这样fork后的两个进程的内存指向的是同一片区域，在进程执行不同的操作时，才在其他空闲内存区域写入一个新的对象并改写原指针。如果两个程序的大部分内存数据都是相同的，那么这个技术能省下非常多的内存空间。<br>而标记清除算法每次gc，都会修改对象头部的标志位。“copy-on-write”会判断对象已经被改动，从空闲内存中写入新的对象并改写原指针，相当于每一个对象都被复制了一遍。</p>
-<h2 id="3-改进"><a href="#3-改进" class="headerlink" title="3 改进"></a>3 改进</h2><h3 id="3-1-多个空闲链表"><a href="#3-1-多个空闲链表" class="headerlink" title="3.1 多个空闲链表"></a>3.1 多个空闲链表</h3><p>是利用分块大小不同的空闲链表，即创建只连接大分块的空闲链表和只连接小分块的空闲链表。假设对象中的每个成员变量都占用Field_Size个字节。</p>
+<h3 id="2-2-缺点"><a class="header-anchor" href="#2-2-缺点">¶</a>2.2 缺点</h3>
+<h4 id="2-2-1-碎片化"><a class="header-anchor" href="#2-2-1-碎片化">¶</a>2.2.1 碎片化</h4>
+<p>由分配算法可知标记-清除法或多或少会发生碎片化。如果发生碎片化，那么即使堆中分块的总大小够用，也会因为一个个的分块都太小而不能执行分配。</p>
+<h4 id="2-2-2-分配速度"><a class="header-anchor" href="#2-2-2-分配速度">¶</a>2.2.2 分配速度</h4>
+<p>GC标记- 清除算法中分块不是连续的，因此每次分配都必须遍历空闲链表，找到足够大的分块。最糟的情况就是每次进行分配都得把空闲链表遍历到最后。</p>
+<h4 id="2-2-3-与copy-on-write不兼容"><a class="header-anchor" href="#2-2-3-与copy-on-write不兼容">¶</a>2.2.3 与copy-on-write不兼容</h4>
+<p>写时复制技术的优势在于，fork进程的时候，内存空间是引用而不是复制。这样fork后的两个进程的内存指向的是同一片区域，在进程执行不同的操作时，才在其他空闲内存区域写入一个新的对象并改写原指针。如果两个程序的大部分内存数据都是相同的，那么这个技术能省下非常多的内存空间。<br>
+而标记清除算法每次gc，都会修改对象头部的标志位。“copy-on-write”会判断对象已经被改动，从空闲内存中写入新的对象并改写原指针，相当于每一个对象都被复制了一遍。</p>
+<h2 id="3-改进"><a class="header-anchor" href="#3-改进">¶</a>3 改进</h2>
+<h3 id="3-1-多个空闲链表"><a class="header-anchor" href="#3-1-多个空闲链表">¶</a>3.1 多个空闲链表</h3>
+<p>是利用分块大小不同的空闲链表，即创建只连接大分块的空闲链表和只连接小分块的空闲链表。假设对象中的每个成员变量都占用Field_Size个字节。</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">new_obj(size)&#123;  index = size / Field_Size  if(index &lt;= 100)&#123;    if($free_list[index] != NULL)&#123;	  chunk = $free_list[index]      $free_list[index] = $free_list[index].next	  return chunk</span><br><span class="line">	&#125;  &#125;else&#123;	chunk = pickup_chunk(size, $free_list[101])	if(chunk != NULL)		return chunk</span><br><span class="line">  &#125;allocation_fail()&#125;</span><br></pre></td></tr></table></figure>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">sweep_phase()&#123;  for(i : 2..101)	$free_list[i] = NULL</span><br><span class="line">	sweeping = $heap_start</span><br><span class="line">while(sweeping &lt; $heap_end)&#123;  if(sweeping.mark == TRUE)&#123;	sweeping.mark = FALSE  &#125;else&#123;    index = size / Field_Size    if(index &lt;= 100)&#123;	  sweeping.next = $free_list[index]	  $free_list[index] = sweeping</span><br><span class="line">	&#125;else&#123;	  sweeping.next = $free_list[101]	  $free_list[101] = sweeping</span><br><span class="line">	&#125;	sweeping += sweeping.size</span><br><span class="line">  &#125;&#125;</span><br></pre></td></tr></table></figure>
-<h3 id="3-2-BIBOP"><a href="#3-2-BIBOP" class="headerlink" title="3.2 BIBOP"></a>3.2 BIBOP</h3><p>BiBOP核心是“将大小相近的对象整理成固定大小的块进行管理“。<br>此方法原本是为了消除碎片化，提高堆使用效率而采用。但在多个块中分散残留着同样大小的对象，反而会降低堆使用效率。</p>
-<h3 id="3-3-位图标记法"><a href="#3-3-位图标记法" class="headerlink" title="3.3 位图标记法"></a>3.3 位图标记法</h3><p>位图标记法通过标记的时候，不在对象的头里置位，而是在特定的位置设置标志位。</p>
+<h3 id="3-2-BIBOP"><a class="header-anchor" href="#3-2-BIBOP">¶</a>3.2 BIBOP</h3>
+<p>BiBOP核心是“将大小相近的对象整理成固定大小的块进行管理“。<br>
+此方法原本是为了消除碎片化，提高堆使用效率而采用。但在多个块中分散残留着同样大小的对象，反而会降低堆使用效率。</p>
+<h3 id="3-3-位图标记法"><a class="header-anchor" href="#3-3-位图标记法">¶</a>3.3 位图标记法</h3>
+<p>位图标记法通过标记的时候，不在对象的头里置位，而是在特定的位置设置标志位。</p>
 <p><img src="http://cyblog.oss-cn-hangzhou.aliyuncs.com/GC%E4%B9%8B%E6%A0%87%E8%AE%B0%E6%B8%85%E9%99%A4/GC%E4%B9%8B%E6%A0%87%E8%AE%B0%E6%B8%85%E9%99%A4%E4%BD%8D%E5%9B%BE%E6%A0%87%E8%AE%B0.png" alt="位图标记法"></p>
 <p>mark() 函数如代码如下：</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mark(obj)&#123;obj_num = (obj - $heap_start) / WORD_LENGTHindex = obj_num / WORD_LENGTHoffset = obj_num % WORD_LENGTHif(($bitmap_tbl[index] &amp; (1 &lt;&lt; offset)) == 0)$bitmap_tbl[index] |= (1 &lt;&lt; offset)for(child : children(obj))mark(*child)&#125;</span><br></pre></td></tr></table></figure>
 <p>WORD_LENGTH代表一个字的位宽，每个字需要一个位来标记是否使用。obj_num表示从位图前面数起，obj的标志位在第几个。由于每个“字”可以存储WORD_LENGTH个“位“”，所以用obj_num 除以WORD_LENGTH 得到的商index 以及余数offset 来分别表示落在位图的哪个字，以及这个字的哪个位上。</p>
-<h4 id="与写时复制技术兼容"><a href="#与写时复制技术兼容" class="headerlink" title="与写时复制技术兼容"></a>与写时复制技术兼容</h4><p>位图标记在单独的区域而不是对象中，可以与写时复制技术兼容。</p>
-<h4 id="清除操作更高效"><a href="#清除操作更高效" class="headerlink" title="清除操作更高效"></a>清除操作更高效</h4><p>位图标记的sweep_phase()函数如下：</p>
+<h4 id="与写时复制技术兼容"><a class="header-anchor" href="#与写时复制技术兼容">¶</a>与写时复制技术兼容</h4>
+<p>位图标记在单独的区域而不是对象中，可以与写时复制技术兼容。</p>
+<h4 id="清除操作更高效"><a class="header-anchor" href="#清除操作更高效">¶</a>清除操作更高效</h4>
+<p>位图标记的sweep_phase()函数如下：</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">sweep_phase()&#123;sweeping = $heap_startindex = 0offset = 0while(sweeping &lt; $heap_end)&#123;  if($bitmap_tbl[index] &amp; (1 &lt;&lt; offset) == 0)&#123;	sweeping.next = $free_list	$free_list = sweeping</span><br><span class="line">	&#125;  index += (offset + sweeping.size) / WORD_LENGTH  offset = (offset + sweeping.size) % WORD_LENGTH  sweeping += sweeping.size&#125;</span><br><span class="line">for(i : 0..(HEAP_SIZE / WORD_LENGTH - 1))$bitmap_tbl[i] = 0&#125;</span><br></pre></td></tr></table></figure>
 <p>用sweeping 指针遍历整个堆，如果对应的位图没有被标记，则加入空闲列表。最后将整个位图清零。</p>
-<p>注意，在堆有多个，对象地址不连续的情况下，我们无法用单纯的位运算求出标志位的<br>位置。因此，在堆为多个的情况下，一般会为每个堆都准备一个位图表格。</p>
-<h3 id="3-4-延迟清除法"><a href="#3-4-延迟清除法" class="headerlink" title="3.4 延迟清除法"></a>3.4 延迟清除法</h3><p>延迟清除法在标记操作结束后，不一并进行清除操作，而是延迟清除。从而缩减因清除操作而导致的应用最大暂停时间。</p>
-<h4 id="3-4-1-new-obj-函数"><a href="#3-4-1-new-obj-函数" class="headerlink" title="3.4.1 new_obj() 函数"></a>3.4.1 new_obj() 函数</h4><p>延迟清除法中的new_obj() 函数的定义如下：</p>
+<p>注意，在堆有多个，对象地址不连续的情况下，我们无法用单纯的位运算求出标志位的<br>
+位置。因此，在堆为多个的情况下，一般会为每个堆都准备一个位图表格。</p>
+<h3 id="3-4-延迟清除法"><a class="header-anchor" href="#3-4-延迟清除法">¶</a>3.4 延迟清除法</h3>
+<p>延迟清除法在标记操作结束后，不一并进行清除操作，而是延迟清除。从而缩减因清除操作而导致的应用最大暂停时间。</p>
+<h4 id="3-4-1-new-obj-函数"><a class="header-anchor" href="#3-4-1-new-obj-函数">¶</a>3.4.1 new_obj() 函数</h4>
+<p>延迟清除法中的new_obj() 函数的定义如下：</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">new_obj(size)&#123;chunk = lazy_sweep(size)if(chunk != NULL)return chunkmark_phase()chunk = lazy_sweep(size)if(chunk != NULL)return chunkallocation_fail()&#125;</span><br></pre></td></tr></table></figure>
 <p>在分配时直接调用lazy_sweep() 函数，进行清除操作。如果它能用清除操作来分配分块，就会返回分块；如果不能分配分块，就会执行标记操作。当lazy_sweep() 函数返回NULL时，也就是没有找到分块时，会调用mark_phase() 函数进行一遍标记操作，再调用lazy_sweep() 函数来分配分块。在这里没能分配分块也就意味着堆上没有分块，分配失败。</p>
-<h4 id="3-4-2-lazy-sweep-函数"><a href="#3-4-2-lazy-sweep-函数" class="headerlink" title="3.4.2 lazy_sweep() 函数"></a>3.4.2 lazy_sweep() 函数</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">lazy_sweep(size)&#123;  while($sweeping &lt; $heap_end)&#123;	if($sweeping.mark == TRUE)&#123;	  $sweeping.mark = FALSE</span><br><span class="line">	  &#125;	else if($sweeping.size &gt;= size)&#123;	  chunk = $sweeping	  $sweeping += $sweeping.size	  return chunk	  &#125;	$sweeping += $sweeping.size	&#125;	$sweeping = $heap_start	return NULL&#125;</span><br></pre></td></tr></table></figure>
+<h4 id="3-4-2-lazy-sweep-函数"><a class="header-anchor" href="#3-4-2-lazy-sweep-函数">¶</a>3.4.2 lazy_sweep() 函数</h4>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">lazy_sweep(size)&#123;  while($sweeping &lt; $heap_end)&#123;	if($sweeping.mark == TRUE)&#123;	  $sweeping.mark = FALSE</span><br><span class="line">	  &#125;	else if($sweeping.size &gt;= size)&#123;	  chunk = $sweeping	  $sweeping += $sweeping.size	  return chunk	  &#125;	$sweeping += $sweeping.size	&#125;	$sweeping = $heap_start	return NULL&#125;</span><br></pre></td></tr></table></figure>
 <p>lazy_sweep() 函数会一直遍历堆，直到找到大于等于所申请大小的分块为止。如果分块已经被标记，说明不能使用，清空标志位等待下一轮标记。如果没有被标记且符合所需要的大小，则直接返回使用。</p>
 <p>注意：</p>
 <ul>
-<li><p>$sweeping 变量是全局变量。也就是说，遍历的开始位置位于上一次清除操作中发现的分块的右边。</p>
+<li>
+<p>$sweeping 变量是全局变量。也就是说，遍历的开始位置位于上一次清除操作中发现的分块的右边。</p>
 </li>
-<li><p>当lazy_sweep() 函数遍历到堆最后都没有找到分块时，会返回NULL。</p>
+<li>
+<p>当lazy_sweep() 函数遍历到堆最后都没有找到分块时，会返回NULL。</p>
 </li>
 </ul>
-<p>延迟清除法不是一下遍历整个堆，它只在分配时执行必要的遍历，所以可以压缩因<br>清除操作而导致的应用的暂停时间。</p>
-<h4 id="延迟清除法的问题"><a href="#延迟清除法的问题" class="headerlink" title="延迟清除法的问题"></a>延迟清除法的问题</h4><p><img src="http://cyblog.oss-cn-hangzhou.aliyuncs.com/GC%E4%B9%8B%E6%A0%87%E8%AE%B0%E6%B8%85%E9%99%A4/%E5%9E%83%E5%9C%BE%E5%88%86%E5%B8%83%E4%B8%8D%E5%9D%87%E5%8C%80.png" alt="垃圾分布不均匀"></p>
+<p>延迟清除法不是一下遍历整个堆，它只在分配时执行必要的遍历，所以可以压缩因<br>
+清除操作而导致的应用的暂停时间。</p>
+<h4 id="延迟清除法的问题"><a class="header-anchor" href="#延迟清除法的问题">¶</a>延迟清除法的问题</h4>
+<p><img src="http://cyblog.oss-cn-hangzhou.aliyuncs.com/GC%E4%B9%8B%E6%A0%87%E8%AE%B0%E6%B8%85%E9%99%A4/%E5%9E%83%E5%9C%BE%E5%88%86%E5%B8%83%E4%B8%8D%E5%9D%87%E5%8C%80.png" alt="垃圾分布不均匀"></p>
 <p>程序在清除垃圾较多的部分时能马上获得分块，所以能减少应用的暂停时间。然而一旦程序开始清除活动对象周围，就怎么也无法获得分块了，这样就增加了应用的暂停时间。导致某些分配特别慢。</p>
 
       
@@ -420,7 +457,7 @@
                 </span>
                 <span class="tooltip-content">
                     <div class="toc-article">
-                    <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#1-算法简介"><span class="toc-number">1.</span> <span class="toc-text">1 算法简介</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-1-标记阶段"><span class="toc-number">1.1.</span> <span class="toc-text">1.1 标记阶段</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-2-清除阶段"><span class="toc-number">1.2.</span> <span class="toc-text">1.2 清除阶段</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-3-分配"><span class="toc-number">1.3.</span> <span class="toc-text">1.3 分配</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#分配算法"><span class="toc-number">1.3.1.</span> <span class="toc-text">分配算法</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-4-合并"><span class="toc-number">1.4.</span> <span class="toc-text">1.4 合并</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-优缺点"><span class="toc-number">2.</span> <span class="toc-text">2 优缺点</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-优点"><span class="toc-number">2.1.</span> <span class="toc-text">2.1 优点</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-缺点"><span class="toc-number">2.2.</span> <span class="toc-text">2.2 缺点</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#2-2-1-碎片化"><span class="toc-number">2.2.1.</span> <span class="toc-text">2.2.1 碎片化</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#2-2-2-分配速度"><span class="toc-number">2.2.2.</span> <span class="toc-text">2.2.2 分配速度</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#2-2-3-与copy-on-write不兼容"><span class="toc-number">2.2.3.</span> <span class="toc-text">2.2.3 与copy-on-write不兼容</span></a></li></ol></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-改进"><span class="toc-number">3.</span> <span class="toc-text">3 改进</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-多个空闲链表"><span class="toc-number">3.1.</span> <span class="toc-text">3.1 多个空闲链表</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-BIBOP"><span class="toc-number">3.2.</span> <span class="toc-text">3.2 BIBOP</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-位图标记法"><span class="toc-number">3.3.</span> <span class="toc-text">3.3 位图标记法</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#与写时复制技术兼容"><span class="toc-number">3.3.1.</span> <span class="toc-text">与写时复制技术兼容</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#清除操作更高效"><span class="toc-number">3.3.2.</span> <span class="toc-text">清除操作更高效</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-4-延迟清除法"><span class="toc-number">3.4.</span> <span class="toc-text">3.4 延迟清除法</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#3-4-1-new-obj-函数"><span class="toc-number">3.4.1.</span> <span class="toc-text">3.4.1 new_obj() 函数</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#3-4-2-lazy-sweep-函数"><span class="toc-number">3.4.2.</span> <span class="toc-text">3.4.2 lazy_sweep() 函数</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#延迟清除法的问题"><span class="toc-number">3.4.3.</span> <span class="toc-text">延迟清除法的问题</span></a></li></ol></li></ol></li></ol>
+                    <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#1-算法简介"><span class="toc-number">1.</span> <span class="toc-text">¶1 算法简介</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-1-标记阶段"><span class="toc-number">1.1.</span> <span class="toc-text">¶1.1 标记阶段</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-2-清除阶段"><span class="toc-number">1.2.</span> <span class="toc-text">¶1.2 清除阶段</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-3-分配"><span class="toc-number">1.3.</span> <span class="toc-text">¶1.3 分配</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#分配算法"><span class="toc-number">1.3.1.</span> <span class="toc-text">¶分配算法</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-4-合并"><span class="toc-number">1.4.</span> <span class="toc-text">¶1.4 合并</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-优缺点"><span class="toc-number">2.</span> <span class="toc-text">¶2 优缺点</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-优点"><span class="toc-number">2.1.</span> <span class="toc-text">¶2.1 优点</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-缺点"><span class="toc-number">2.2.</span> <span class="toc-text">¶2.2 缺点</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#2-2-1-碎片化"><span class="toc-number">2.2.1.</span> <span class="toc-text">¶2.2.1 碎片化</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#2-2-2-分配速度"><span class="toc-number">2.2.2.</span> <span class="toc-text">¶2.2.2 分配速度</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#2-2-3-与copy-on-write不兼容"><span class="toc-number">2.2.3.</span> <span class="toc-text">¶2.2.3 与copy-on-write不兼容</span></a></li></ol></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-改进"><span class="toc-number">3.</span> <span class="toc-text">¶3 改进</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-多个空闲链表"><span class="toc-number">3.1.</span> <span class="toc-text">¶3.1 多个空闲链表</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-BIBOP"><span class="toc-number">3.2.</span> <span class="toc-text">¶3.2 BIBOP</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-位图标记法"><span class="toc-number">3.3.</span> <span class="toc-text">¶3.3 位图标记法</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#与写时复制技术兼容"><span class="toc-number">3.3.1.</span> <span class="toc-text">¶与写时复制技术兼容</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#清除操作更高效"><span class="toc-number">3.3.2.</span> <span class="toc-text">¶清除操作更高效</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-4-延迟清除法"><span class="toc-number">3.4.</span> <span class="toc-text">¶3.4 延迟清除法</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#3-4-1-new-obj-函数"><span class="toc-number">3.4.1.</span> <span class="toc-text">¶3.4.1 new_obj() 函数</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#3-4-2-lazy-sweep-函数"><span class="toc-number">3.4.2.</span> <span class="toc-text">¶3.4.2 lazy_sweep() 函数</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#延迟清除法的问题"><span class="toc-number">3.4.3.</span> <span class="toc-text">¶延迟清除法的问题</span></a></li></ol></li></ol></li></ol>
                     </div>
                 </span>
             </div>
@@ -530,14 +567,6 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
           <ul class="article-tag-list" q-show="showTags">
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color5">论文研读</a>
-              </li>
-             
-              <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color3">存储</a>
-              </li>
-             
-              <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color4">FMQ</a>
               </li>
              
@@ -546,11 +575,19 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color4">中间件</a>
+                <a href="javascript:void(0)" class="js-tag color5">论文研读</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color3">存储</a>
               </li>
              
               <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color5">java</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color4">中间件</a>
               </li>
              
               <li class="article-tag-list-item">
@@ -570,11 +607,15 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color4">RocketMQ</a>
+              </li>
+             
+              <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color4">jvm</a>
               </li>
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color4">RocketMQ</a>
+                <a href="javascript:void(0)" class="js-tag color4">JVM</a>
               </li>
              
               <li class="article-tag-list-item">
@@ -583,10 +624,6 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
              
               <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color3">计划</a>
-              </li>
-             
-              <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color4">JVM</a>
               </li>
              
               <li class="article-tag-list-item">

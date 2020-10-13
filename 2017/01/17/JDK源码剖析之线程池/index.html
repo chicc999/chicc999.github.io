@@ -16,10 +16,13 @@
 <meta property="og:site_name" content="陈大白的博客">
 <meta property="og:description" content="通过对JDK源码的分析，学习线程池的实现。">
 <meta property="og:locale" content="zh-CN">
+<meta property="og:image" content="http://cyblog.oss-cn-hangzhou.aliyuncs.com/threadpool/ThreadPool.png">
+<meta property="og:image" content="http://cyblog.oss-cn-hangzhou.aliyuncs.com/threadpool/interface.png">
 <meta property="og:updated_time" content="2020-08-01T04:14:57.804Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="JDK源码剖析之线程池">
 <meta name="twitter:description" content="通过对JDK源码的分析，学习线程池的实现。">
+<meta name="twitter:image" content="http://cyblog.oss-cn-hangzhou.aliyuncs.com/threadpool/ThreadPool.png">
   
     <link rel="alternative" href="/atom.xml" title="陈大白的博客" type="application/atom+xml">
   
@@ -206,12 +209,16 @@
     
     <div class="article-entry" itemprop="articleBody">
       
-        <p>通过对JDK源码的分析，学习线程池的实现。<br><a id="more"></a></p>
-<h1 id="1-体系结构"><a href="#1-体系结构" class="headerlink" title="1 体系结构"></a>1 体系结构</h1><p>JDK的线程池将线程的调度流程与被调度对象分开，对于调度流程的相关的接口与类，设计如下图所示：</p>
-<p>&lt;img src=<a href="http://cyblog.oss-cn-hangzhou.aliyuncs.com/threadpool/ThreadPool.png" target="_blank" rel="noopener">http://cyblog.oss-cn-hangzhou.aliyuncs.com/threadpool/ThreadPool.png</a> width=”50%” height=”50%”/&gt;</p>
-<h2 id="1-1-接口"><a href="#1-1-接口" class="headerlink" title="1.1 接口"></a>1.1 接口</h2><p>Executor和ExecutorService接口定义了执行器最基础的方法，方法列表如下图。</p>
-<p>&lt;img src=<a href="http://cyblog.oss-cn-hangzhou.aliyuncs.com/threadpool/interface.png" target="_blank" rel="noopener">http://cyblog.oss-cn-hangzhou.aliyuncs.com/threadpool/interface.png</a> width=”50%” height=”50%”/&gt;</p>
-<h1 id="2-基本参数"><a href="#2-基本参数" class="headerlink" title="2 基本参数"></a>2 基本参数</h1>
+        <p>通过对JDK源码的分析，学习线程池的实现。</p>
+<a id="more"></a>
+<h1>1 体系结构</h1>
+<p>JDK的线程池将线程的调度流程与被调度对象分开，对于调度流程的相关的接口与类，设计如下图所示：</p>
+<img src="http://cyblog.oss-cn-hangzhou.aliyuncs.com/threadpool/ThreadPool.png" width="50%" height="50%">
+<h2 id="1-1-接口"><a class="header-anchor" href="#1-1-接口">¶</a>1.1 接口</h2>
+<p>Executor和ExecutorService接口定义了执行器最基础的方法，方法列表如下图。</p>
+<img src="http://cyblog.oss-cn-hangzhou.aliyuncs.com/threadpool/interface.png" width="50%" height="50%">
+<h1>2 基本参数</h1>
+
       
 
       
@@ -368,7 +375,7 @@
                 </span>
                 <span class="tooltip-content">
                     <div class="toc-article">
-                    <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#1-体系结构"><span class="toc-number">1.</span> <span class="toc-text">1 体系结构</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#1-1-接口"><span class="toc-number">1.1.</span> <span class="toc-text">1.1 接口</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#2-基本参数"><span class="toc-number">2.</span> <span class="toc-text">2 基本参数</span></a></li></ol>
+                    <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#null"><span class="toc-number">1.</span> <span class="toc-text">1 体系结构</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#1-1-接口"><span class="toc-number">1.1.</span> <span class="toc-text">¶1.1 接口</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#null"><span class="toc-number">2.</span> <span class="toc-text">2 基本参数</span></a></li></ol>
                     </div>
                 </span>
             </div>
@@ -478,14 +485,6 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
           <ul class="article-tag-list" q-show="showTags">
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color5">论文研读</a>
-              </li>
-             
-              <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color3">存储</a>
-              </li>
-             
-              <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color4">FMQ</a>
               </li>
              
@@ -494,11 +493,19 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color4">中间件</a>
+                <a href="javascript:void(0)" class="js-tag color5">论文研读</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color3">存储</a>
               </li>
              
               <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color5">java</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color4">中间件</a>
               </li>
              
               <li class="article-tag-list-item">
@@ -518,11 +525,15 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color4">RocketMQ</a>
+              </li>
+             
+              <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color4">jvm</a>
               </li>
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color4">RocketMQ</a>
+                <a href="javascript:void(0)" class="js-tag color4">JVM</a>
               </li>
              
               <li class="article-tag-list-item">
@@ -531,10 +542,6 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
              
               <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color3">计划</a>
-              </li>
-             
-              <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color4">JVM</a>
               </li>
              
               <li class="article-tag-list-item">

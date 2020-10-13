@@ -212,38 +212,66 @@
     
     <div class="article-entry" itemprop="articleBody">
       
-        <p><em>消息队列一直是中间件中核心的一环，承担着应用解耦，削峰填谷等重任。目前市场上已经有很多成熟的系统珠玉在前，比如ActiveMQ，Kafka,RabbitMQ等。本文选取的比较对象为阿里的RocketMQ，旨在全方位对比京东金融使用的FMQ与其差异。以下分析基于Apache RocketMQ 4.2.0，FMQ 2.1.5。</em><br><a id="more"></a></p>
-<h1 id="1-底层架构分析"><a href="#1-底层架构分析" class="headerlink" title="1 底层架构分析"></a>1 底层架构分析</h1><h2 id="RocketMQ"><a href="#RocketMQ" class="headerlink" title="RocketMQ"></a>RocketMQ</h2><p><img src="http://cdn.infoqstatic.com/statics_s2_20171017-0336/resource/news/2017/02/RocketMQ-future-idea/zh/resources/1.png" alt="RocketMQ架构"><br>RocketMQ架构如图所示，主要包括client(producer，consumer)，NameServer，Broker三部分。非核心组件包括用于过滤消息的FilterServer。  </p>
+        <p><em>消息队列一直是中间件中核心的一环，承担着应用解耦，削峰填谷等重任。目前市场上已经有很多成熟的系统珠玉在前，比如ActiveMQ，Kafka,RabbitMQ等。本文选取的比较对象为阿里的RocketMQ，旨在全方位对比京东金融使用的FMQ与其差异。以下分析基于Apache RocketMQ 4.2.0，FMQ 2.1.5。</em></p>
+<a id="more"></a>
+<h1>1 底层架构分析</h1>
+<h2 id="RocketMQ"><a class="header-anchor" href="#RocketMQ">¶</a>RocketMQ</h2>
+<p><img src="http://cdn.infoqstatic.com/statics_s2_20171017-0336/resource/news/2017/02/RocketMQ-future-idea/zh/resources/1.png" alt="RocketMQ架构"><br>
+RocketMQ架构如图所示，主要包括client(producer，consumer)，NameServer，Broker三部分。非核心组件包括用于过滤消息的FilterServer。</p>
 <ul>
-<li>client<ul>
-<li>producer<br>消息的生产者,从NameServer获取路由信息，并进行负载均衡发送至broker。</li>
-<li>consumer<br>消息的消费者，从NameServer获取路由信息，从broker消费消息。支持PUSH和PULL两种消费模式，支持集群消费和广播消息。</li>
+<li>client
+<ul>
+<li>producer<br>
+消息的生产者,从NameServer获取路由信息，并进行负载均衡发送至broker。</li>
+<li>consumer<br>
+消息的消费者，从NameServer获取路由信息，从broker消费消息。支持PUSH和PULL两种消费模式，支持集群消费和广播消息。</li>
 </ul>
 </li>
-<li>NameServer<br>  提供服务发现的功能，每个NameServer存有路由信息，供客户端获取。同时NameServer每台都拥有全量信息，可以横向扩容。</li>
-<li>broker<br>  负责消息的实际存储和分发。 </li>
+<li>NameServer<br>
+提供服务发现的功能，每个NameServer存有路由信息，供客户端获取。同时NameServer每台都拥有全量信息，可以横向扩容。</li>
+<li>broker<br>
+负责消息的实际存储和分发。</li>
 <li>filterServer</li>
 </ul>
 <p>每个broker启动时，将自己的信息以及元数据注册到NameServer，元信息包括broker所拥有的topic信息。client启动的时候，向NameServer查阅所需的topic信息，NameServer返回此topic对应的broker信息（broker 名称到地址的映射），client直接和broker通信。</p>
-<h2 id="FMQ"><a href="#FMQ" class="headerlink" title="FMQ"></a>FMQ</h2><p><img src="http://cyblog.oss-cn-hangzhou.aliyuncs.com/FMQ%20vs%20RMQ/FMQVSRMQFMQ%E6%9E%B6%E6%9E%84.png" alt="FMQQ架构"><br>FMQ 2.0的架构如图所示，分为核心组件（必须部署）和可选组件（提供消息队列以外额外功能）。  </p>
-<h3 id="自研核心组件"><a href="#自研核心组件" class="headerlink" title="自研核心组件"></a>自研核心组件</h3><ul>
-<li>client<ul>
+<h2 id="FMQ"><a class="header-anchor" href="#FMQ">¶</a>FMQ</h2>
+<p><img src="http://cyblog.oss-cn-hangzhou.aliyuncs.com/FMQ%20vs%20RMQ/FMQVSRMQFMQ%E6%9E%B6%E6%9E%84.png" alt="FMQQ架构"><br>
+FMQ 2.0的架构如图所示，分为核心组件（必须部署）和可选组件（提供消息队列以外额外功能）。</p>
+<h3 id="自研核心组件"><a class="header-anchor" href="#自研核心组件">¶</a>自研核心组件</h3>
+<ul>
+<li>client
+<ul>
 <li>producer</li>
 <li>consumer</li>
 </ul>
 </li>
 <li>broker</li>
 <li>task</li>
-<li>web<h3 id="第三方核心组件"><a href="#第三方核心组件" class="headerlink" title="第三方核心组件"></a>第三方核心组件</h3></li>
+<li>web</li>
+</ul>
+<h3 id="第三方核心组件"><a class="header-anchor" href="#第三方核心组件">¶</a>第三方核心组件</h3>
+<ul>
 <li>mysql</li>
-<li>zookeeper<h3 id="自研可选组件"><a href="#自研可选组件" class="headerlink" title="自研可选组件"></a>自研可选组件</h3></li>
+<li>zookeeper</li>
+</ul>
+<h3 id="自研可选组件"><a class="header-anchor" href="#自研可选组件">¶</a>自研可选组件</h3>
+<ul>
 <li>alarm</li>
-<li>agent<h3 id="第三方可选组件"><a href="#第三方可选组件" class="headerlink" title="第三方可选组件"></a>第三方可选组件</h3></li>
+<li>agent</li>
+</ul>
+<h3 id="第三方可选组件"><a class="header-anchor" href="#第三方可选组件">¶</a>第三方可选组件</h3>
+<ul>
 <li>R2M（redis）</li>
 <li>UNC</li>
 <li>hbase</li>
 </ul>
-<h1 id="2-功能对比"><a href="#2-功能对比" class="headerlink" title="2 功能对比"></a>2 功能对比</h1><h2 id="2-1-系统特性"><a href="#2-1-系统特性" class="headerlink" title="2.1 系统特性"></a>2.1 系统特性</h2><h3 id="2-1-1-高吞吐"><a href="#2-1-1-高吞吐" class="headerlink" title="2.1.1 高吞吐"></a>2.1.1 高吞吐</h3><h4 id="存储特性"><a href="#存储特性" class="headerlink" title="存储特性"></a>存储特性</h4><h4 id="网络特性"><a href="#网络特性" class="headerlink" title="网络特性"></a>网络特性</h4><h4 id="传输协议"><a href="#传输协议" class="headerlink" title="传输协议"></a>传输协议</h4><table>
+<h1>2 功能对比</h1>
+<h2 id="2-1-系统特性"><a class="header-anchor" href="#2-1-系统特性">¶</a>2.1 系统特性</h2>
+<h3 id="2-1-1-高吞吐"><a class="header-anchor" href="#2-1-1-高吞吐">¶</a>2.1.1 高吞吐</h3>
+<h4 id="存储特性"><a class="header-anchor" href="#存储特性">¶</a>存储特性</h4>
+<h4 id="网络特性"><a class="header-anchor" href="#网络特性">¶</a>网络特性</h4>
+<h4 id="传输协议"><a class="header-anchor" href="#传输协议">¶</a>传输协议</h4>
+<table>
 <thead>
 <tr>
 <th>Tables</th>
@@ -269,21 +297,45 @@
 </tr>
 </tbody>
 </table>
-<h3 id="2-1-2-高可用"><a href="#2-1-2-高可用" class="headerlink" title="2.1.2 高可用"></a>2.1.2 高可用</h3><h4 id="自动负载均衡"><a href="#自动负载均衡" class="headerlink" title="自动负载均衡"></a>自动负载均衡</h4><h4 id="从消费"><a href="#从消费" class="headerlink" title="从消费"></a>从消费</h4><h3 id="2-1-3-高可靠"><a href="#2-1-3-高可靠" class="headerlink" title="2.1.3 高可靠"></a>2.1.3 高可靠</h3><h4 id="同步刷盘"><a href="#同步刷盘" class="headerlink" title="同步刷盘"></a>同步刷盘</h4><h4 id="同步复制"><a href="#同步复制" class="headerlink" title="同步复制"></a>同步复制</h4><h3 id="2-1-4-低延迟"><a href="#2-1-4-低延迟" class="headerlink" title="2.1.4 低延迟"></a>2.1.4 低延迟</h3><h4 id="长轮询"><a href="#长轮询" class="headerlink" title="长轮询"></a>长轮询</h4><h2 id="2-2-功能特性"><a href="#2-2-功能特性" class="headerlink" title="2.2 功能特性"></a>2.2 功能特性</h2><h3 id="2-2-1-消息过滤"><a href="#2-2-1-消息过滤" class="headerlink" title="2.2.1 消息过滤"></a>2.2.1 消息过滤</h3><h4 id="RocketMQ-1"><a href="#RocketMQ-1" class="headerlink" title="RocketMQ"></a>RocketMQ</h4><p>通过FilterServer进行过滤，将过滤规则由客户端传至FilterServer，本质上是用cpu资源换网络带宽。（代码待看）</p>
-<h4 id="FMQ-1"><a href="#FMQ-1" class="headerlink" title="FMQ"></a>FMQ</h4><h3 id="2-2-2-顺序消息"><a href="#2-2-2-顺序消息" class="headerlink" title="2.2.2 顺序消息"></a>2.2.2 顺序消息</h3><p>无论RocketMQ还是FMQ，默认发送都是无序的，如图所示。<br><img src="https://pic1.zhimg.com/50/v2-612e7eaad6734189fdb6c927a9a1d520_hd.png" alt="RocketMQ发送"><br>消息以轮询的方式发向各个队列。但是在每个队列中，不考虑重试的情况下，是可以保证FIFO的。那如何保证消息有序呢？</p>
-<h4 id="RocketMQ-2"><a href="#RocketMQ-2" class="headerlink" title="RocketMQ"></a>RocketMQ</h4><p>RocketMQ有序队列的示例代码如下，用户可以自定义一个队列选择器。客户端获取了所有的队列数量，并将id按照队列数量取模，这样在队列数量不变的情况下，id相同的消息一定会被投递到同一个队列。由于单个队列是FIFO的，就能保证有序。</p>
+<h3 id="2-1-2-高可用"><a class="header-anchor" href="#2-1-2-高可用">¶</a>2.1.2 高可用</h3>
+<h4 id="自动负载均衡"><a class="header-anchor" href="#自动负载均衡">¶</a>自动负载均衡</h4>
+<h4 id="从消费"><a class="header-anchor" href="#从消费">¶</a>从消费</h4>
+<h3 id="2-1-3-高可靠"><a class="header-anchor" href="#2-1-3-高可靠">¶</a>2.1.3 高可靠</h3>
+<h4 id="同步刷盘"><a class="header-anchor" href="#同步刷盘">¶</a>同步刷盘</h4>
+<h4 id="同步复制"><a class="header-anchor" href="#同步复制">¶</a>同步复制</h4>
+<h3 id="2-1-4-低延迟"><a class="header-anchor" href="#2-1-4-低延迟">¶</a>2.1.4 低延迟</h3>
+<h4 id="长轮询"><a class="header-anchor" href="#长轮询">¶</a>长轮询</h4>
+<h2 id="2-2-功能特性"><a class="header-anchor" href="#2-2-功能特性">¶</a>2.2 功能特性</h2>
+<h3 id="2-2-1-消息过滤"><a class="header-anchor" href="#2-2-1-消息过滤">¶</a>2.2.1 消息过滤</h3>
+<h4 id="RocketMQ-v2"><a class="header-anchor" href="#RocketMQ-v2">¶</a>RocketMQ</h4>
+<p>通过FilterServer进行过滤，将过滤规则由客户端传至FilterServer，本质上是用cpu资源换网络带宽。（代码待看）</p>
+<h4 id="FMQ-v2"><a class="header-anchor" href="#FMQ-v2">¶</a>FMQ</h4>
+<h3 id="2-2-2-顺序消息"><a class="header-anchor" href="#2-2-2-顺序消息">¶</a>2.2.2 顺序消息</h3>
+<p>无论RocketMQ还是FMQ，默认发送都是无序的，如图所示。<br>
+<img src="https://pic1.zhimg.com/50/v2-612e7eaad6734189fdb6c927a9a1d520_hd.png" alt="RocketMQ发送"><br>
+消息以轮询的方式发向各个队列。但是在每个队列中，不考虑重试的情况下，是可以保证FIFO的。那如何保证消息有序呢？</p>
+<h4 id="RocketMQ-v3"><a class="header-anchor" href="#RocketMQ-v3">¶</a>RocketMQ</h4>
+<p>RocketMQ有序队列的示例代码如下，用户可以自定义一个队列选择器。客户端获取了所有的队列数量，并将id按照队列数量取模，这样在队列数量不变的情况下，id相同的消息一定会被投递到同一个队列。由于单个队列是FIFO的，就能保证有序。</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">SendResult sendResult = producer.send(msg, new MessageQueueSelector() &#123;</span><br><span class="line">                    @Override</span><br><span class="line">                    public MessageQueue select(List&lt;MessageQueue&gt; mqs, Message msg, Object arg) &#123;</span><br><span class="line">                        Integer id = (Integer) arg;</span><br><span class="line">                        int index = id % mqs.size();</span><br><span class="line">                        return mqs.get(index);</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;, orderId);</span><br></pre></td></tr></table></figure>
 <p>如何保证顺序消费？消费者的监听器实现MessageListenerOrderly接口。</p>
-<h4 id="FMQ-2"><a href="#FMQ-2" class="headerlink" title="FMQ"></a>FMQ</h4><h3 id="2-2-3-重试"><a href="#2-2-3-重试" class="headerlink" title="2.2.3 重试"></a>2.2.3 重试</h3><h4 id="RocketMQ-3"><a href="#RocketMQ-3" class="headerlink" title="RocketMQ"></a>RocketMQ</h4><ul>
-<li>生产端重试<br>  生产出现异常后会一直重试直到超时或者达到配置的最大重试次数。</li>
-<li>消费端重试  <ul>
+<h4 id="FMQ-v3"><a class="header-anchor" href="#FMQ-v3">¶</a>FMQ</h4>
+<h3 id="2-2-3-重试"><a class="header-anchor" href="#2-2-3-重试">¶</a>2.2.3 重试</h3>
+<h4 id="RocketMQ-v4"><a class="header-anchor" href="#RocketMQ-v4">¶</a>RocketMQ</h4>
+<ul>
+<li>生产端重试<br>
+生产出现异常后会一直重试直到超时或者达到配置的最大重试次数。</li>
+<li>消费端重试
+<ul>
 <li>服务端如果未收到客户端消费失败的ack，会一直进行重发。</li>
 <li>客户端消费失败，消息被发往重试队列（%RETRY%ConsumerGroup），按consumerGroup组织。</li>
 <li>重试一定次数仍然失败，消息被发往私信队列（%DLQ%ConsumerGroup）</li>
 </ul>
 </li>
 </ul>
-<h4 id="FMQ-3"><a href="#FMQ-3" class="headerlink" title="FMQ"></a>FMQ</h4><h3 id="2-2-4-事务消息"><a href="#2-2-4-事务消息" class="headerlink" title="2.2.4 事务消息"></a>2.2.4 事务消息</h3><p>事务消息是指本地操作与发送消息两个操作，在操作成功的同时要保证消息一定发送成功，操作失败的情况下消息一定不能发送。采用两阶段提交的方式流程如下图：<br><img src="http://cyblog.oss-cn-hangzhou.aliyuncs.com/FMQ%20vs%20RMQ/2pc.png" alt="2PC"></p>
+<h4 id="FMQ-v4"><a class="header-anchor" href="#FMQ-v4">¶</a>FMQ</h4>
+<h3 id="2-2-4-事务消息"><a class="header-anchor" href="#2-2-4-事务消息">¶</a>2.2.4 事务消息</h3>
+<p>事务消息是指本地操作与发送消息两个操作，在操作成功的同时要保证消息一定发送成功，操作失败的情况下消息一定不能发送。采用两阶段提交的方式流程如下图：<br>
+<img src="http://cyblog.oss-cn-hangzhou.aliyuncs.com/FMQ%20vs%20RMQ/2pc.png" alt="2PC"></p>
 <ol>
 <li>客户端先发送消息，此时消息在broker中处于prepared状态;</li>
 <li>服务端收到消息，存入内存中（或磁盘的prepared队列），回复ack；</li>
@@ -291,11 +343,14 @@
 <li>服务端处理对应的commit or rollback消息，回复客户端ack。</li>
 </ol>
 <p>以上是一个标准的两阶段提交过程。</p>
-<h4 id="RocketMQ-4"><a href="#RocketMQ-4" class="headerlink" title="RocketMQ"></a>RocketMQ</h4><p><img src="http://cyblog.oss-cn-hangzhou.aliyuncs.com/FMQ%20vs%20RMQ/%E4%BA%8B%E5%8A%A1%E6%B6%88%E6%81%AF.png" alt="事务消息"><br>RocketMQ事务消息过程如图所示。</p>
+<h4 id="RocketMQ-v5"><a class="header-anchor" href="#RocketMQ-v5">¶</a>RocketMQ</h4>
+<p><img src="http://cyblog.oss-cn-hangzhou.aliyuncs.com/FMQ%20vs%20RMQ/%E4%BA%8B%E5%8A%A1%E6%B6%88%E6%81%AF.png" alt="事务消息"><br>
+RocketMQ事务消息过程如图所示。</p>
 <ol>
 <li>客户端先发送消息，此时消息在broker中处于prepared状态;</li>
 <li>服务端收到消息，持久化到磁盘，此时消息处于prepared状态，回复ack；</li>
-<li>客户端接收到ack消息以后，执行本地操作<ul>
+<li>客户端接收到ack消息以后，执行本地操作
+<ul>
 <li>在数据库中添加一个字段表明本地操作是否成功；</li>
 <li>将本地操作与更新数据库做成一个事务，如果本地操作成功，则状态一定被更新</li>
 </ul>
@@ -304,21 +359,42 @@
 <li>服务端处理对应的commit or rollback消息，回复客户端ack。</li>
 <li>服务端如果发现有超期的消息处于prepared阶段，则启动回查机制，查询本地状态表，根据状态表的状态来觉得commit还是rollback。</li>
 </ol>
-<h4 id="FMQ-4"><a href="#FMQ-4" class="headerlink" title="FMQ"></a>FMQ</h4><h3 id="2-2-5-延迟消费"><a href="#2-2-5-延迟消费" class="headerlink" title="2.2.5 延迟消费"></a>2.2.5 延迟消费</h3><h4 id="RocketMQ-5"><a href="#RocketMQ-5" class="headerlink" title="RocketMQ"></a>RocketMQ</h4><p>RocketMQ的延迟消费需要在broker上配置延迟级别，默认值如下：</p>
+<h4 id="FMQ-v5"><a class="header-anchor" href="#FMQ-v5">¶</a>FMQ</h4>
+<h3 id="2-2-5-延迟消费"><a class="header-anchor" href="#2-2-5-延迟消费">¶</a>2.2.5 延迟消费</h3>
+<h4 id="RocketMQ-v6"><a class="header-anchor" href="#RocketMQ-v6">¶</a>RocketMQ</h4>
+<p>RocketMQ的延迟消费需要在broker上配置延迟级别，默认值如下：</p>
 <blockquote>
-<p>messageDelayLevel=1s 5s 10s 30s 1m 2m 3m 4m 5m 6m 7m 8m 9m 10m 20m 30m 1h 2h  </p>
+<p>messageDelayLevel=1s 5s 10s 30s 1m 2m 3m 4m 5m 6m 7m 8m 9m 10m 20m 30m 1h 2h</p>
 </blockquote>
 <blockquote>
-<p>这个配置项配置了从1级开始，各级延时的时间，可以修改这个指定级别的延时时间；<br>时间单位支持：s、m、h、d，分别表示秒、分、时、天；</p>
+<p>这个配置项配置了从1级开始，各级延时的时间，可以修改这个指定级别的延时时间；<br>
+时间单位支持：s、m、h、d，分别表示秒、分、时、天；</p>
 </blockquote>
-<p>1.broker对于每个DelayLevel建立自己的队列<br>2.有延迟消息到来的时候，暂时保存其真实的topic和queueId,将主题设置为 SCHEDULE_TOPIC ，队列设置为DelayLevel所对应的队列中（逻辑见如下引用代码）；</p>
+<p>1.broker对于每个DelayLevel建立自己的队列<br>
+2.有延迟消息到来的时候，暂时保存其真实的topic和queueId,将主题设置为 SCHEDULE_TOPIC ，队列设置为DelayLevel所对应的队列中（逻辑见如下引用代码）；</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">topic = ScheduleMessageService.SCHEDULE_TOPIC;</span><br><span class="line">          queueId = ScheduleMessageService.delayLevel2QueueId(msg.getDelayTimeLevel());</span><br><span class="line"></span><br><span class="line">          // Backup real topic, queueId</span><br><span class="line">          MessageAccessor.putProperty(msg, MessageConst.PROPERTY_REAL_TOPIC, msg.getTopic());</span><br><span class="line">          MessageAccessor.putProperty(msg, MessageConst.PROPERTY_REAL_QUEUE_ID, String.valueOf(msg.getQueueId()));</span><br><span class="line">          msg.setPropertiesString(MessageDecoder.messageProperties2String(msg.getProperties()));</span><br><span class="line"></span><br><span class="line">          msg.setTopic(topic);</span><br><span class="line">          msg.setQueueId(queueId);</span><br></pre></td></tr></table></figure>
 <p>3.启动线程模拟成SCHEDULE_TOPIC的消费者，取队列头部消息比较是否已经满足投递时间，如果满足，则将消息按原来的topic和queueId投向原有队列。</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ConsumeQueue cq = ScheduleMessageService.this.defaultMessageStore.findConsumeQueue(SCHEDULE_TOPIC,delayLevel2QueueId(delayLevel));</span><br></pre></td></tr></table></figure>
-<h3 id="2-2-6-消息轨迹"><a href="#2-2-6-消息轨迹" class="headerlink" title="2.2.6 消息轨迹"></a>2.2.6 消息轨迹</h3><h3 id="2-2-7-消息回溯"><a href="#2-2-7-消息回溯" class="headerlink" title="2.2.7 消息回溯"></a>2.2.7 消息回溯</h3><ul>
+<h3 id="2-2-6-消息轨迹"><a class="header-anchor" href="#2-2-6-消息轨迹">¶</a>2.2.6 消息轨迹</h3>
+<h3 id="2-2-7-消息回溯"><a class="header-anchor" href="#2-2-7-消息回溯">¶</a>2.2.7 消息回溯</h3>
+<ul>
 <li>FMQ支持按照offset和timestamp进行回溯</li>
 </ul>
-<h3 id="2-2-8-并行消费"><a href="#2-2-8-并行消费" class="headerlink" title="2.2.8 并行消费"></a>2.2.8 并行消费</h3><h2 id="2-3-运维特性"><a href="#2-3-运维特性" class="headerlink" title="2.3 运维特性"></a>2.3 运维特性</h2><h3 id="2-3-1-配置"><a href="#2-3-1-配置" class="headerlink" title="2.3.1 配置"></a>2.3.1 配置</h3><h3 id="2-3-2-监控"><a href="#2-3-2-监控" class="headerlink" title="2.3.2 监控"></a>2.3.2 监控</h3><h3 id="2-3-3-归档"><a href="#2-3-3-归档" class="headerlink" title="2.3.3 归档"></a>2.3.3 归档</h3><h3 id="2-3-4-报警"><a href="#2-3-4-报警" class="headerlink" title="2.3.4 报警"></a>2.3.4 报警</h3><h1 id="3-性能对比"><a href="#3-性能对比" class="headerlink" title="3 性能对比"></a>3 性能对比</h1><h2 id="单机性能对比"><a href="#单机性能对比" class="headerlink" title="单机性能对比"></a>单机性能对比</h2><h2 id="集群性能对比"><a href="#集群性能对比" class="headerlink" title="集群性能对比"></a>集群性能对比</h2><h1 id="4-友好性对比"><a href="#4-友好性对比" class="headerlink" title="4 友好性对比"></a>4 友好性对比</h1><h2 id="4-1-文档完备性"><a href="#4-1-文档完备性" class="headerlink" title="4.1 文档完备性"></a>4.1 文档完备性</h2><h2 id="4-2-快速入门"><a href="#4-2-快速入门" class="headerlink" title="4.2 快速入门"></a>4.2 快速入门</h2><h2 id="4-3-部署难度"><a href="#4-3-部署难度" class="headerlink" title="4.3 部署难度"></a>4.3 部署难度</h2><h2 id="4-4-社区活跃度"><a href="#4-4-社区活跃度" class="headerlink" title="4.4 社区活跃度"></a>4.4 社区活跃度</h2>
+<h3 id="2-2-8-并行消费"><a class="header-anchor" href="#2-2-8-并行消费">¶</a>2.2.8 并行消费</h3>
+<h2 id="2-3-运维特性"><a class="header-anchor" href="#2-3-运维特性">¶</a>2.3 运维特性</h2>
+<h3 id="2-3-1-配置"><a class="header-anchor" href="#2-3-1-配置">¶</a>2.3.1 配置</h3>
+<h3 id="2-3-2-监控"><a class="header-anchor" href="#2-3-2-监控">¶</a>2.3.2 监控</h3>
+<h3 id="2-3-3-归档"><a class="header-anchor" href="#2-3-3-归档">¶</a>2.3.3 归档</h3>
+<h3 id="2-3-4-报警"><a class="header-anchor" href="#2-3-4-报警">¶</a>2.3.4 报警</h3>
+<h1>3 性能对比</h1>
+<h2 id="单机性能对比"><a class="header-anchor" href="#单机性能对比">¶</a>单机性能对比</h2>
+<h2 id="集群性能对比"><a class="header-anchor" href="#集群性能对比">¶</a>集群性能对比</h2>
+<h1>4 友好性对比</h1>
+<h2 id="4-1-文档完备性"><a class="header-anchor" href="#4-1-文档完备性">¶</a>4.1 文档完备性</h2>
+<h2 id="4-2-快速入门"><a class="header-anchor" href="#4-2-快速入门">¶</a>4.2 快速入门</h2>
+<h2 id="4-3-部署难度"><a class="header-anchor" href="#4-3-部署难度">¶</a>4.3 部署难度</h2>
+<h2 id="4-4-社区活跃度"><a class="header-anchor" href="#4-4-社区活跃度">¶</a>4.4 社区活跃度</h2>
+
       
 
       
@@ -475,7 +551,7 @@
                 </span>
                 <span class="tooltip-content">
                     <div class="toc-article">
-                    <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#1-底层架构分析"><span class="toc-number">1.</span> <span class="toc-text">1 底层架构分析</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#RocketMQ"><span class="toc-number">1.1.</span> <span class="toc-text">RocketMQ</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#FMQ"><span class="toc-number">1.2.</span> <span class="toc-text">FMQ</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#自研核心组件"><span class="toc-number">1.2.1.</span> <span class="toc-text">自研核心组件</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#第三方核心组件"><span class="toc-number">1.2.2.</span> <span class="toc-text">第三方核心组件</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#自研可选组件"><span class="toc-number">1.2.3.</span> <span class="toc-text">自研可选组件</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#第三方可选组件"><span class="toc-number">1.2.4.</span> <span class="toc-text">第三方可选组件</span></a></li></ol></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#2-功能对比"><span class="toc-number">2.</span> <span class="toc-text">2 功能对比</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#2-1-系统特性"><span class="toc-number">2.1.</span> <span class="toc-text">2.1 系统特性</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-1-高吞吐"><span class="toc-number">2.1.1.</span> <span class="toc-text">2.1.1 高吞吐</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#存储特性"><span class="toc-number">2.1.1.1.</span> <span class="toc-text">存储特性</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#网络特性"><span class="toc-number">2.1.1.2.</span> <span class="toc-text">网络特性</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#传输协议"><span class="toc-number">2.1.1.3.</span> <span class="toc-text">传输协议</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-2-高可用"><span class="toc-number">2.1.2.</span> <span class="toc-text">2.1.2 高可用</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#自动负载均衡"><span class="toc-number">2.1.2.1.</span> <span class="toc-text">自动负载均衡</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#从消费"><span class="toc-number">2.1.2.2.</span> <span class="toc-text">从消费</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-3-高可靠"><span class="toc-number">2.1.3.</span> <span class="toc-text">2.1.3 高可靠</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#同步刷盘"><span class="toc-number">2.1.3.1.</span> <span class="toc-text">同步刷盘</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#同步复制"><span class="toc-number">2.1.3.2.</span> <span class="toc-text">同步复制</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-4-低延迟"><span class="toc-number">2.1.4.</span> <span class="toc-text">2.1.4 低延迟</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#长轮询"><span class="toc-number">2.1.4.1.</span> <span class="toc-text">长轮询</span></a></li></ol></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-2-功能特性"><span class="toc-number">2.2.</span> <span class="toc-text">2.2 功能特性</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-1-消息过滤"><span class="toc-number">2.2.1.</span> <span class="toc-text">2.2.1 消息过滤</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#RocketMQ-1"><span class="toc-number">2.2.1.1.</span> <span class="toc-text">RocketMQ</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#FMQ-1"><span class="toc-number">2.2.1.2.</span> <span class="toc-text">FMQ</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-2-顺序消息"><span class="toc-number">2.2.2.</span> <span class="toc-text">2.2.2 顺序消息</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#RocketMQ-2"><span class="toc-number">2.2.2.1.</span> <span class="toc-text">RocketMQ</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#FMQ-2"><span class="toc-number">2.2.2.2.</span> <span class="toc-text">FMQ</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-3-重试"><span class="toc-number">2.2.3.</span> <span class="toc-text">2.2.3 重试</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#RocketMQ-3"><span class="toc-number">2.2.3.1.</span> <span class="toc-text">RocketMQ</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#FMQ-3"><span class="toc-number">2.2.3.2.</span> <span class="toc-text">FMQ</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-4-事务消息"><span class="toc-number">2.2.4.</span> <span class="toc-text">2.2.4 事务消息</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#RocketMQ-4"><span class="toc-number">2.2.4.1.</span> <span class="toc-text">RocketMQ</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#FMQ-4"><span class="toc-number">2.2.4.2.</span> <span class="toc-text">FMQ</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-5-延迟消费"><span class="toc-number">2.2.5.</span> <span class="toc-text">2.2.5 延迟消费</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#RocketMQ-5"><span class="toc-number">2.2.5.1.</span> <span class="toc-text">RocketMQ</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-6-消息轨迹"><span class="toc-number">2.2.6.</span> <span class="toc-text">2.2.6 消息轨迹</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-7-消息回溯"><span class="toc-number">2.2.7.</span> <span class="toc-text">2.2.7 消息回溯</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-8-并行消费"><span class="toc-number">2.2.8.</span> <span class="toc-text">2.2.8 并行消费</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-3-运维特性"><span class="toc-number">2.3.</span> <span class="toc-text">2.3 运维特性</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-3-1-配置"><span class="toc-number">2.3.1.</span> <span class="toc-text">2.3.1 配置</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-3-2-监控"><span class="toc-number">2.3.2.</span> <span class="toc-text">2.3.2 监控</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-3-3-归档"><span class="toc-number">2.3.3.</span> <span class="toc-text">2.3.3 归档</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-3-4-报警"><span class="toc-number">2.3.4.</span> <span class="toc-text">2.3.4 报警</span></a></li></ol></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#3-性能对比"><span class="toc-number">3.</span> <span class="toc-text">3 性能对比</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#单机性能对比"><span class="toc-number">3.1.</span> <span class="toc-text">单机性能对比</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#集群性能对比"><span class="toc-number">3.2.</span> <span class="toc-text">集群性能对比</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#4-友好性对比"><span class="toc-number">4.</span> <span class="toc-text">4 友好性对比</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#4-1-文档完备性"><span class="toc-number">4.1.</span> <span class="toc-text">4.1 文档完备性</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4-2-快速入门"><span class="toc-number">4.2.</span> <span class="toc-text">4.2 快速入门</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4-3-部署难度"><span class="toc-number">4.3.</span> <span class="toc-text">4.3 部署难度</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4-4-社区活跃度"><span class="toc-number">4.4.</span> <span class="toc-text">4.4 社区活跃度</span></a></li></ol></li></ol>
+                    <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#null"><span class="toc-number">1.</span> <span class="toc-text">1 底层架构分析</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#RocketMQ"><span class="toc-number">1.1.</span> <span class="toc-text">¶RocketMQ</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#FMQ"><span class="toc-number">1.2.</span> <span class="toc-text">¶FMQ</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#自研核心组件"><span class="toc-number">1.2.1.</span> <span class="toc-text">¶自研核心组件</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#第三方核心组件"><span class="toc-number">1.2.2.</span> <span class="toc-text">¶第三方核心组件</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#自研可选组件"><span class="toc-number">1.2.3.</span> <span class="toc-text">¶自研可选组件</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#第三方可选组件"><span class="toc-number">1.2.4.</span> <span class="toc-text">¶第三方可选组件</span></a></li></ol></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#null"><span class="toc-number">2.</span> <span class="toc-text">2 功能对比</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#2-1-系统特性"><span class="toc-number">2.1.</span> <span class="toc-text">¶2.1 系统特性</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-1-高吞吐"><span class="toc-number">2.1.1.</span> <span class="toc-text">¶2.1.1 高吞吐</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#存储特性"><span class="toc-number">2.1.1.1.</span> <span class="toc-text">¶存储特性</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#网络特性"><span class="toc-number">2.1.1.2.</span> <span class="toc-text">¶网络特性</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#传输协议"><span class="toc-number">2.1.1.3.</span> <span class="toc-text">¶传输协议</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-2-高可用"><span class="toc-number">2.1.2.</span> <span class="toc-text">¶2.1.2 高可用</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#自动负载均衡"><span class="toc-number">2.1.2.1.</span> <span class="toc-text">¶自动负载均衡</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#从消费"><span class="toc-number">2.1.2.2.</span> <span class="toc-text">¶从消费</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-3-高可靠"><span class="toc-number">2.1.3.</span> <span class="toc-text">¶2.1.3 高可靠</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#同步刷盘"><span class="toc-number">2.1.3.1.</span> <span class="toc-text">¶同步刷盘</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#同步复制"><span class="toc-number">2.1.3.2.</span> <span class="toc-text">¶同步复制</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-4-低延迟"><span class="toc-number">2.1.4.</span> <span class="toc-text">¶2.1.4 低延迟</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#长轮询"><span class="toc-number">2.1.4.1.</span> <span class="toc-text">¶长轮询</span></a></li></ol></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-2-功能特性"><span class="toc-number">2.2.</span> <span class="toc-text">¶2.2 功能特性</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-1-消息过滤"><span class="toc-number">2.2.1.</span> <span class="toc-text">¶2.2.1 消息过滤</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#RocketMQ-v2"><span class="toc-number">2.2.1.1.</span> <span class="toc-text">¶RocketMQ</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#FMQ-v2"><span class="toc-number">2.2.1.2.</span> <span class="toc-text">¶FMQ</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-2-顺序消息"><span class="toc-number">2.2.2.</span> <span class="toc-text">¶2.2.2 顺序消息</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#RocketMQ-v3"><span class="toc-number">2.2.2.1.</span> <span class="toc-text">¶RocketMQ</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#FMQ-v3"><span class="toc-number">2.2.2.2.</span> <span class="toc-text">¶FMQ</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-3-重试"><span class="toc-number">2.2.3.</span> <span class="toc-text">¶2.2.3 重试</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#RocketMQ-v4"><span class="toc-number">2.2.3.1.</span> <span class="toc-text">¶RocketMQ</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#FMQ-v4"><span class="toc-number">2.2.3.2.</span> <span class="toc-text">¶FMQ</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-4-事务消息"><span class="toc-number">2.2.4.</span> <span class="toc-text">¶2.2.4 事务消息</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#RocketMQ-v5"><span class="toc-number">2.2.4.1.</span> <span class="toc-text">¶RocketMQ</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#FMQ-v5"><span class="toc-number">2.2.4.2.</span> <span class="toc-text">¶FMQ</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-5-延迟消费"><span class="toc-number">2.2.5.</span> <span class="toc-text">¶2.2.5 延迟消费</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#RocketMQ-v6"><span class="toc-number">2.2.5.1.</span> <span class="toc-text">¶RocketMQ</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-6-消息轨迹"><span class="toc-number">2.2.6.</span> <span class="toc-text">¶2.2.6 消息轨迹</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-7-消息回溯"><span class="toc-number">2.2.7.</span> <span class="toc-text">¶2.2.7 消息回溯</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-8-并行消费"><span class="toc-number">2.2.8.</span> <span class="toc-text">¶2.2.8 并行消费</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-3-运维特性"><span class="toc-number">2.3.</span> <span class="toc-text">¶2.3 运维特性</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-3-1-配置"><span class="toc-number">2.3.1.</span> <span class="toc-text">¶2.3.1 配置</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-3-2-监控"><span class="toc-number">2.3.2.</span> <span class="toc-text">¶2.3.2 监控</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-3-3-归档"><span class="toc-number">2.3.3.</span> <span class="toc-text">¶2.3.3 归档</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-3-4-报警"><span class="toc-number">2.3.4.</span> <span class="toc-text">¶2.3.4 报警</span></a></li></ol></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#null"><span class="toc-number">3.</span> <span class="toc-text">3 性能对比</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#单机性能对比"><span class="toc-number">3.1.</span> <span class="toc-text">¶单机性能对比</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#集群性能对比"><span class="toc-number">3.2.</span> <span class="toc-text">¶集群性能对比</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#null"><span class="toc-number">4.</span> <span class="toc-text">4 友好性对比</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#4-1-文档完备性"><span class="toc-number">4.1.</span> <span class="toc-text">¶4.1 文档完备性</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4-2-快速入门"><span class="toc-number">4.2.</span> <span class="toc-text">¶4.2 快速入门</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4-3-部署难度"><span class="toc-number">4.3.</span> <span class="toc-text">¶4.3 部署难度</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4-4-社区活跃度"><span class="toc-number">4.4.</span> <span class="toc-text">¶4.4 社区活跃度</span></a></li></ol></li></ol>
                     </div>
                 </span>
             </div>
@@ -632,14 +708,6 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
           <ul class="article-tag-list" q-show="showTags">
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color5">论文研读</a>
-              </li>
-             
-              <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color3">存储</a>
-              </li>
-             
-              <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color4">FMQ</a>
               </li>
              
@@ -648,11 +716,19 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color4">中间件</a>
+                <a href="javascript:void(0)" class="js-tag color5">论文研读</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color3">存储</a>
               </li>
              
               <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color5">java</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color4">中间件</a>
               </li>
              
               <li class="article-tag-list-item">
@@ -672,11 +748,15 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color4">RocketMQ</a>
+              </li>
+             
+              <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color4">jvm</a>
               </li>
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color4">RocketMQ</a>
+                <a href="javascript:void(0)" class="js-tag color4">JVM</a>
               </li>
              
               <li class="article-tag-list-item">
@@ -685,10 +765,6 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
              
               <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color3">计划</a>
-              </li>
-             
-              <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color4">JVM</a>
               </li>
              
               <li class="article-tag-list-item">
