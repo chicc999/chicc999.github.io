@@ -525,6 +525,19 @@
         </div>
         
         
+        <div class="toc-container tooltip-left">
+            <i class="icon-font icon-category"></i>
+            <div class="tooltip tooltip-east">
+                <span class="tooltip-item">
+                </span>
+                <span class="tooltip-content">
+                    <div class="toc-article">
+                    <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#1-failover方案"><span class="toc-number">1.</span> <span class="toc-text">1 failover方案</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#1-1-基于权重的容灾"><span class="toc-number">1.1.</span> <span class="toc-text">1.1 基于权重的容灾</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-1-1-路由接口"><span class="toc-number">1.1.1.</span> <span class="toc-text">1.1.1 路由接口</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-1-2-轮盘赌（Roulette）算法"><span class="toc-number">1.1.2.</span> <span class="toc-text">1.1.2 轮盘赌（Roulette）算法</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-1-3-影响权重的因素"><span class="toc-number">1.1.3.</span> <span class="toc-text">1.1.3 影响权重的因素</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-1-4-故障切换"><span class="toc-number">1.1.4.</span> <span class="toc-text">1.1.4 故障切换</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-1-4-1-写操作"><span class="toc-number">1.1.5.</span> <span class="toc-text">1.1.4.1 写操作</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-1-4-2-读操作"><span class="toc-number">1.1.6.</span> <span class="toc-text">1.1.4.2 读操作</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#1-2-重试"><span class="toc-number">1.2.</span> <span class="toc-text">1.2 重试</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#2-超时？超时！"><span class="toc-number">2.</span> <span class="toc-text">2 超时？超时！</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#2-1-原因分析"><span class="toc-number">2.1.</span> <span class="toc-text">2.1 原因分析</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-2-解决方案"><span class="toc-number">2.2.</span> <span class="toc-text">2.2 解决方案</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#3-翻车了？再升级"><span class="toc-number">3.</span> <span class="toc-text">3 翻车了？再升级</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#3-1-线上故障描述"><span class="toc-number">3.1.</span> <span class="toc-text">3.1 线上故障描述</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-2-故障排查"><span class="toc-number">3.2.</span> <span class="toc-text">3.2 故障排查</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-1-复现"><span class="toc-number">3.2.1.</span> <span class="toc-text">3.2.1 复现</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-2-真假难辨-write-amp-flush"><span class="toc-number">3.2.2.</span> <span class="toc-text">3.2.2 真假难辨 write &amp; flush</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#3-2-2-1-write"><span class="toc-number">3.2.2.1.</span> <span class="toc-text">3.2.2.1 write</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#3-2-2-2-flush"><span class="toc-number">3.2.2.2.</span> <span class="toc-text">3.2.2.2 flush</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#3-2-2-3-结论"><span class="toc-number">3.2.2.3.</span> <span class="toc-text">3.2.2.3 结论</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-3-形同摆设的心跳"><span class="toc-number">3.2.3.</span> <span class="toc-text">3.3.3 形同摆设的心跳</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#3-3-3-1-IdleStateHandler"><span class="toc-number">3.2.3.1.</span> <span class="toc-text">3.3.3.1 IdleStateHandler</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#3-3-3-2-Event-IDLE传递"><span class="toc-number">3.2.3.2.</span> <span class="toc-text">3.3.3.2 Event.IDLE传递</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#3-3-3-3-问题所在"><span class="toc-number">3.2.3.3.</span> <span class="toc-text">3.3.3.3 问题所在</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-4-减少拷贝的小彩蛋"><span class="toc-number">3.2.4.</span> <span class="toc-text">3.3.4 减少拷贝的小彩蛋</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-3-解决方案"><span class="toc-number">3.3.</span> <span class="toc-text">3.3 解决方案</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-1-验证结论"><span class="toc-number">3.3.1.</span> <span class="toc-text">3.3.1 验证结论</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-2-解决"><span class="toc-number">3.3.2.</span> <span class="toc-text">3.3.2 解决</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-3-验证"><span class="toc-number">3.3.3.</span> <span class="toc-text">3.3.3 验证</span></a></li></ol></li></ol></li></ol>
+                    </div>
+                </span>
+            </div>
+        </div>
+        
     </div>
 </aside>
 
@@ -676,19 +689,19 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
           <ul class="article-tag-list" q-show="showTags">
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color4">FMQ</a>
-              </li>
-             
-              <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color5">消息队列</a>
-              </li>
-             
-              <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color5">论文研读</a>
               </li>
              
               <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color3">存储</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color4">FMQ</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color5">消息队列</a>
               </li>
              
               <li class="article-tag-list-item">
@@ -716,11 +729,11 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color4">RocketMQ</a>
+                <a href="javascript:void(0)" class="js-tag color4">jvm</a>
               </li>
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color4">jvm</a>
+                <a href="javascript:void(0)" class="js-tag color4">RocketMQ</a>
               </li>
              
               <li class="article-tag-list-item">

@@ -490,6 +490,19 @@
         </div>
         
         
+        <div class="toc-container tooltip-left">
+            <i class="icon-font icon-category"></i>
+            <div class="tooltip tooltip-east">
+                <span class="tooltip-item">
+                </span>
+                <span class="tooltip-content">
+                    <div class="toc-article">
+                    <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#1-时序模型"><span class="toc-number">1.</span> <span class="toc-text">1 时序模型</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#2-源码剖析"><span class="toc-number">2.</span> <span class="toc-text">2 源码剖析</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-写入与等待"><span class="toc-number">2.0.1.</span> <span class="toc-text">2.1 写入与等待</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-2-复制"><span class="toc-number">2.1.</span> <span class="toc-text">2.2 复制</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-1-HA服务"><span class="toc-number">2.1.1.</span> <span class="toc-text">2.2.1 HA服务</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#isSlaveOK"><span class="toc-number">2.1.1.0.1.</span> <span class="toc-text">isSlaveOK</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#notifyTransferSome"><span class="toc-number">2.1.1.0.2.</span> <span class="toc-text">notifyTransferSome</span></a></li></ol></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-2-Accept服务"><span class="toc-number">2.1.2.</span> <span class="toc-text">2.2.2 Accept服务</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-3-GroupTransfer服务"><span class="toc-number">2.1.3.</span> <span class="toc-text">2.2.3 GroupTransfer服务</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#run"><span class="toc-number">2.1.3.0.1.</span> <span class="toc-text">run</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#doWaitTransfer"><span class="toc-number">2.1.3.0.2.</span> <span class="toc-text">doWaitTransfer</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#putRequest"><span class="toc-number">2.1.3.0.3.</span> <span class="toc-text">putRequest</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#swapRequests"><span class="toc-number">2.1.3.0.4.</span> <span class="toc-text">swapRequests</span></a></li></ol></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-4-HAClient"><span class="toc-number">2.1.4.</span> <span class="toc-text">2.2.4 HAClient</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#run-1"><span class="toc-number">2.1.4.0.1.</span> <span class="toc-text">run</span></a></li></ol></li><li class="toc-item toc-level-4"><a class="toc-link" href="#处理读事件"><span class="toc-number">2.1.4.1.</span> <span class="toc-text">处理读事件</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#reallocateByteBuffer-amp-amp-swapByteBuffer"><span class="toc-number">2.1.4.1.1.</span> <span class="toc-text">reallocateByteBuffer &amp;&amp; swapByteBuffer</span></a></li></ol></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-5-HAConnection"><span class="toc-number">2.1.5.</span> <span class="toc-text">2.2.5 HAConnection</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-6-ReadSocketService"><span class="toc-number">2.1.6.</span> <span class="toc-text">2.2.6 ReadSocketService</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-7-writeSocketService"><span class="toc-number">2.1.7.</span> <span class="toc-text">2.2.7 writeSocketService</span></a></li></ol></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#3-问题"><span class="toc-number">3.</span> <span class="toc-text">3 问题</span></a></li></ol>
+                    </div>
+                </span>
+            </div>
+        </div>
+        
     </div>
 </aside>
 
@@ -641,19 +654,19 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
           <ul class="article-tag-list" q-show="showTags">
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color4">FMQ</a>
-              </li>
-             
-              <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color5">消息队列</a>
-              </li>
-             
-              <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color5">论文研读</a>
               </li>
              
               <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color3">存储</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color4">FMQ</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color5">消息队列</a>
               </li>
              
               <li class="article-tag-list-item">
@@ -681,11 +694,11 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color4">RocketMQ</a>
+                <a href="javascript:void(0)" class="js-tag color4">jvm</a>
               </li>
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color4">jvm</a>
+                <a href="javascript:void(0)" class="js-tag color4">RocketMQ</a>
               </li>
              
               <li class="article-tag-list-item">
