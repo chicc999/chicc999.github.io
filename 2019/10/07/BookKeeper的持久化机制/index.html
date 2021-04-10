@@ -16,7 +16,7 @@
 <meta property="og:site_name" content="陈大白的博客">
 <meta property="og:description" content="本文为论文《Durability with BookKeeper》的精简翻译（省略废话）、注解与解读。">
 <meta property="og:locale" content="zh-CN">
-<meta property="og:updated_time" content="2020-10-13T14:27:41.988Z">
+<meta property="og:updated_time" content="2020-10-19T06:42:09.132Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="BookKeeper的持久化机制">
 <meta name="twitter:description" content="本文为论文《Durability with BookKeeper》的精简翻译（省略废话）、注解与解读。">
@@ -233,12 +233,22 @@
 </ul>
 </blockquote>
 <p>这个系统的日志可以来自不同的应用，或者同一个应用的不同实例。实际上，现在已经有些系统就已经需要并发日志，每个日志有一个writer和多个reader。举个例子，消息系统可以把每个主题映射为一个日志，这些日志可以并行写入。</p>
-<p>在请求被执行和回复客户端之前，需要先被写入WAL。对于追加写（append only）方式的日志，可以顺序的写入日志，从而减少磁盘寻道次数，这对减少常见操作对于性能的影响非常重要。</p>
+<h4 id="应用并发写日志"><a class="header-anchor" href="#应用并发写日志">¶</a>应用并发写日志</h4>
+<p>请求先写入WAL，然后再进行执行和响应客户端。对于追加写（append only）方式的日志，可以顺序的写入日志，从而减少磁盘寻道次数，这对减少常见操作对于性能的影响非常重要。</p>
 <p>解耦日志的实现和机器之间的关系，可以在机器发生永久性故障时，依旧能恢复出日志。</p>
 <ul>
-<li>然而写入一个外部的设备会导致高延迟，以及受限于网络带宽。</li>
+<li>然而写入一个外部的设备会导致高延迟，以及受限于网络带宽；</li>
 <li>写入NFS(举了个雅虎的例子)，会有NFS机器的单点问题；如果NFS开启复制，性能开销比较大；</li>
+<li>如果采用raid的方式，遇上和单个磁盘无关的故障，依旧会导致不可写入；</li>
+<li>另一个重要的影响是NFS上会有大量文件，并发写会导致频繁寻道。</li>
 </ul>
+<p>因此本文的目标是找一个能在多并发写入下维持高吞吐的方案。</p>
+<h4 id="主要贡献"><a class="header-anchor" href="#主要贡献">¶</a>主要贡献</h4>
+<p>BookKeeper为以写入为主的场景实现了一种没有单点故障的高效存储。单个服务器支持海量并发日志，每个日志可以有一个写入进程，多个读取进程。我们定义如下概念：</p>
+<blockquote>
+<p><em>ledgers</em>: BookKeeper的日志</p>
+<p><em>entry</em>: 日志里的一条记录</p>
+</blockquote>
 <hr class="footnotes-sep">
 <section class="footnotes">
 <ol class="footnotes-list">
@@ -398,7 +408,7 @@
                 </span>
                 <span class="tooltip-content">
                     <div class="toc-article">
-                    <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#null"><span class="toc-number">1.</span> <span class="toc-text">摘要</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#null"><span class="toc-number">2.</span> <span class="toc-text">1 介绍</span></a></li></ol>
+                    <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#null"><span class="toc-number">1.</span> <span class="toc-text">摘要</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#null"><span class="toc-number">2.</span> <span class="toc-text">1 介绍</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#应用并发写日志"><span class="toc-number">2.0.0.1.</span> <span class="toc-text">¶应用并发写日志</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#主要贡献"><span class="toc-number">2.0.0.2.</span> <span class="toc-text">¶主要贡献</span></a></li></ol></li></ol></li></ol></li></ol>
                     </div>
                 </span>
             </div>
@@ -465,7 +475,7 @@
   <div class="outer">
     <div id="footer-info">
     	<div class="footer-left">
-    		&copy; 2020 陈大白
+    		&copy; 2021 陈大白
     	</div>
       	<div class="footer-right">
       		<span id="busuanzi_container_site_pv">
@@ -555,14 +565,6 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
           <ul class="article-tag-list" q-show="showTags">
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color4">FMQ</a>
-              </li>
-             
-              <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color5">消息队列</a>
-              </li>
-             
-              <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color5">论文研读</a>
               </li>
              
@@ -571,11 +573,19 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color5">java</a>
+                <a href="javascript:void(0)" class="js-tag color4">FMQ</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color5">消息队列</a>
               </li>
              
               <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color4">中间件</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color5">java</a>
               </li>
              
               <li class="article-tag-list-item">
