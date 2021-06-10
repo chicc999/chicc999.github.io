@@ -199,130 +199,10 @@
     
     <div class="article-entry" itemprop="articleBody">
       
-        <h1>背景</h1>
-<p>目前自研的消息系统FMQ主要存在以下瓶颈</p>
-<ol>
-<li>根据消息体大小不同，1K以下的消息纯写入吞吐量可以达到50-100w tps。但是由于业务消息需要保留的时间较长，受限于磁盘大小，cpu没办法满负荷工作。</li>
-<li>为了在发生故障时快速切换，目前同一个分片broker采用热备。这就意味着至少50%的cpu资源处在空置状态没有真正的处理业务，是极大的浪费。</li>
-<li>为了避免1、2中的浪费，会选择减少计算资源。但是对于业务层面，逐渐出现了一些吃cpu的操作。如消息过滤、消息加密、延迟投递等，一旦计算资源不满足，可能会影响业务。</li>
-</ol>
-<p>基于此背景，考虑可行的计算存储分离方案，以节省成本。</p>
-<h1>可选方案</h1>
-<p>数据密集型的系统如果需要兼顾可靠性与写入效率，一般自下而上分为以下层级</p>
-<ul>
-<li>存储介质层，主要是存储数据的硬件</li>
-<li>日志层，主要用来把随机写转换为顺序写入，如wal之于mysql、hbase,translog之于es。</li>
-<li>索引层，主要根据实际的业务逻辑构建;在很多基于复制日志构建的系统中，也可以等效为复制状态机（RSM）。这一层可能仅仅是索引（如bitcask构建hashmap，rocketMQ构建FIFO队列），也可能是会存实际业务数据并定时进行快照（如b+ tree之于mysql，lsm-tree之于rocksdb等）</li>
-<li>业务层，构建在索引层上的额外能力，如安全认证，限流，过滤等</li>
-<li>协议层，主要用来支持自定义协议，以及各种其它访问协议</li>
-</ul>
-<p>计算存储分离对于存储系统，通常可以在不通的层级进行分离</p>
-<p>​	a.  存储介质层与其余部分分离，如使用云硬盘</p>
-<p>​	b. 日志层（包含）以下与上层分离，由存储组件或云存储负责提供高可靠的分布式日志与接口抽象（如kv接口），索引层根据实际业务构建状态机；</p>
-<p>​	c. 索引层（包含）与上层分离，索引层和日志层放一起存储；即构建一个针对特定场景的核心存储系统，但在此核心系统以上的业务逻辑则分离出去</p>
-<p>​	d. 业务层与上层分离。此种对于大多数系统除了主协议以外，很多附加协议都以网关的形式做了分离，比较常见的一种选择。</p>
-<p>​	e. 存储介质层自身根据冷热数据不同的特性进行存储，热数据采用存储计算一体（或用以上方案分离），冷数据采用特殊存储。</p>
-<p>以下将分别讨论FMQ如果进行计算存储分离的改造，改造方案与收益。</p>
-<h1>存储介质分离</h1>
-<p>以双副本同步模式为例，为了保证数据高可靠，FMQ必须所有副本都sync后才响应用户。如下图所示，所有标号相同的阶段（如1和1’）则表示没有顺序依赖可以并行的步骤：</p>
-<p><img src="https://cyblog.oss-cn-hangzhou.aliyuncs.com/%E6%B6%88%E6%81%AF%E7%B3%BB%E7%BB%9F%E8%AE%A1%E7%AE%97%E5%AD%98%E5%82%A8%E5%88%86%E7%A6%BB%E6%96%B9%E6%A1%88%E8%AE%BE%E8%AE%A1/write.png" alt="写入流程1"></p>
-<p>在存储介质层进行存储计算分离，很容易想到通过挂载云盘解决。如此分离则几乎可以不进行改造。</p>
-<h3 id="收益分析"><a class="header-anchor" href="#收益分析">¶</a>收益分析</h3>
-<ul>
-<li>在存储介质层分离，明显的收益就是存储容量不再成为系统瓶颈，系统可以随着业务增长进行扩容</li>
-</ul>
-<h3 id="成本分析"><a class="header-anchor" href="#成本分析">¶</a>成本分析</h3>
-<ul>
-<li>带来的损耗是多了一次网络开销，按目前测试结果，吞吐量影响不大，但是响应时间上升为400%（从2ms到8ms）</li>
-</ul>
-<h1>日志层分离</h1>
-<p>如果云存储本身提供了数据的高可靠，或者通过文件的抽象接入云存储，出于节省资源和性能的考虑，生产流程可以做如下变动，如下图所示：</p>
-<ul>
-<li>写入完成后即可ack生产者生产成功，不用再等follower的ack</li>
-<li>不再同步实际的消息，仅仅同步写入完成位置，由follower直接从共享存储加载日志后创建索引</li>
-<li>如果仅仅针对消息队列，apply到状态机（创建索引）和应答用户甚至也能并行，即应答不是过程4而是3’</li>
-</ul>
-<p><img src="https://cyblog.oss-cn-hangzhou.aliyuncs.com/%E6%B6%88%E6%81%AF%E7%B3%BB%E7%BB%9F%E8%AE%A1%E7%AE%97%E5%AD%98%E5%82%A8%E5%88%86%E7%A6%BB%E6%96%B9%E6%A1%88%E8%AE%BE%E8%AE%A1/writeSharedStore.png" alt="writeSharedStore"></p>
-<p>另一个可行的方案是，Leader和Follower同步索引而非写入位置，这样可以避免Follower去读从节点。但是由于此方案随着业务逻辑的增多，可能需要同步的类型也会变多（比如延迟消息、事务消息等），且可靠性会成为一个问题。而如果基于日志去恢复，则可以复用recover相关逻辑，所有的变更都以日志的形式记录。</p>
-<h3 id="待解决的问题"><a class="header-anchor" href="#待解决的问题">¶</a>待解决的问题</h3>
-<ul>
-<li>目前索引和日志存在双向指针，即不但索引中存有此消息的实际日志偏移量，日志中也会存此消息创建索引时应该被写入的偏移量。改成外部存储后，当Follower变成Leader时，无法判断前面Leader写入的数据是否都已经被apply到状态机，也就是说无法提前计算出索引中消息存储位置的偏移量。
-<ul>
-<li>可以直接改成索引到日志的单向指针，日志中不再存储索引位置（RocketMQ做法）</li>
-<li>但是此处改动会导致索引出现空洞时（因为bug等），无法迅速发现问题</li>
-</ul>
-</li>
-</ul>
-<h3 id="收益分析-v2"><a class="header-anchor" href="#收益分析-v2">¶</a>收益分析</h3>
-<ul>
-<li>计算层与存储层分离，计算层可以无状态，不再需要选举，利用共享存储fencing解决</li>
-<li>计算层如果因为业务可用性需要在计算层进行热备，可以节省大量资源。例如考虑总共有20台机器，双副本，即10个分片。每个分片100个分区的情况。假设Follower的压力为Leader的20%（实际低于此数值）
-<ul>
-<li>计算存储一体的情况下，有10个Leader对外提供服务，10个Follower提供热备。假设Leader的利用率为100%,Follower为20%，则资源利用率60%。此时每个分区的Leader占用资源1%，Follower占用资源0.2%。</li>
-<li>计算存储在日志层分离后，相当于存储层可以提供10*100个fencing token。计算层的n台机器则可以平分这1000个fencing token，平均每台机器1000/n个分区的写入，1000/n个分区的热备。同样考虑1台机器宕机，剩下的n-1台平均分配这1000/n个fencing token，则最多的机器可以被分配到⌈1000/n/n-1⌉（⌈⌉为向上取整）个。也就是宕机后每台机器最多处理⌈1000/n + 1000/n/n-1⌉Leader分区，热备⌈1000/n + 1000/n/n-1⌉个Follower分区。此时占用的cpu资源仅仅为⌈1000/n + 1000/n/n-1⌉*1.2%。假设宕机后cpu利用率为100%，则求解n为13台。也就是说资源可以节省35%（7/20）。</li>
-<li>值得注意的是，如果考虑修改Leader/Follower的模型从机器级别改为分区级别，也能达到以上效果。</li>
-</ul>
-</li>
-<li>日志层独立后，由于其具有通用性，可以作为内部各种依赖存储的pass产品的底座。此部分进行优化可以使所有产品收益，节省人力成本。</li>
-</ul>
-<h3 id="成本分析-v2"><a class="header-anchor" href="#成本分析-v2">¶</a>成本分析</h3>
-<ul>
-<li>系统复杂度增加，对于如何避免产生双主、如何更快发现故障、如何进行资源调度等提出了更高的要求</li>
-<li>相比计算存储一体，多了网络开销</li>
-<li>由于打算做成通用性组件，对于部分针对特定系统特性的优化可能没法做</li>
-</ul>
-<h1>索引层分离</h1>
-<p>索引层进行计算存储分离，相比于日志层分离区别仅仅在于不再把日志层当做一个通用的存储系统，而是将整个存储层为一个特定系统的而进行设计。在这一层进行存储计算分离则意味着后续的计算层实际上只是一些构建在专用系统上的业务逻辑，而系统的核心逻辑实际上还是计算存储一体。</p>
-<p><img src="https://cyblog.oss-cn-hangzhou.aliyuncs.com/%E6%B6%88%E6%81%AF%E7%B3%BB%E7%BB%9F%E8%AE%A1%E7%AE%97%E5%AD%98%E5%82%A8%E5%88%86%E7%A6%BB%E6%96%B9%E6%A1%88%E8%AE%BE%E8%AE%A1/writeSharedQueue.png" alt="writeSharedQueue"></p>
-<h3 id="收益分析-v3"><a class="header-anchor" href="#收益分析-v3">¶</a>收益分析</h3>
-<ul>
-<li>收益点和日志层分离比较相似，但是节省成本的效果主要取决于broker上的业务到底有多复杂。如果broker上仅仅是协议解析，则能节省的成本非常有限。如果包括鉴权、限流、延迟投递、消息过滤等操作，则节省成本效果会相对较好。收益和实际业务强相关。</li>
-<li>存储层可以针对实际业务逻辑做个性的优化</li>
-</ul>
-<h3 id="成本分析-v3"><a class="header-anchor" href="#成本分析-v3">¶</a>成本分析</h3>
-<ul>
-<li>与日志层分离相比，除了专项优化以外，几乎都不可避免的需要付出；同时由于是专用存储，优化收益不如日志层分离</li>
-<li>分层架构不如日志层分离清晰</li>
-<li>收益不确定</li>
-</ul>
-<h1>方案选择</h1>
-<p>如果进行计算存储分离的改造，FMQ倾向于日志层分离+冷热存储分离来进行计算存储分离。</p>
-<p>写入时如果要考虑高可靠同步刷盘，同时要支持单机多分区的情况下性能不随着分区数增多而下降，则需要将多个partition的日志进行聚合（wal）。但是考虑到无论是消息回溯消费、消息计算还是归档，其实都是只关心主题/分区维度的消息，如果消息混杂在一起则会变成随机读，同时也影响磁盘回收。</p>
-<p>方案将读写进行隔离，热读与冷读进行隔离。对于写入，聚合后进行顺序写有明显的性能优势。而此时如果进行追尾读，由于内存中有数据的cache，基本不需要进行磁盘IO。但是对于延迟消费、积压消费、回溯消费则会变成随机读，因此对于冷数据，会按照partition维度进行存储，以保证从磁盘顺序读。</p>
-<h3 id="写入流程"><a class="header-anchor" href="#写入流程">¶</a>写入流程</h3>
-<ul>
-<li>
-<p>将副本的角色（Leader/Follower/Learner/Observer）由机器维度下放到分区维度。</p>
-</li>
-<li>
-<p>broker变为无状态的节点，通过异步加载日志，以partition维度进行热备。</p>
-</li>
-<li>
-<p>存储层通过fencing机制保证只有一个broker有资格写一个partition的数据</p>
-</li>
-<li>
-<p>broker持有写权限的多个partition在broker内聚合后，批量写高性能存储，同步写成功后响应客户端成功</p>
-</li>
-<li>
-<p>高性能存储仅提供追加写，为多个可靠的复制组构成（raft、pacificA等），broker写成功后建立索引</p>
-</li>
-<li>
-<p>后台任务按照分区维度重新组织journal和index，写入低成本冷存储（云存储/EC/HDD）后，store模块进行gc回收日志</p>
-</li>
-</ul>
-<p><img src="https://cyblog.oss-cn-hangzhou.aliyuncs.com/%E6%B6%88%E6%81%AF%E7%B3%BB%E7%BB%9F%E8%AE%A1%E7%AE%97%E5%AD%98%E5%82%A8%E5%88%86%E7%A6%BB%E6%96%B9%E6%A1%88%E8%AE%BE%E8%AE%A1/writeSharedEverything.png" alt="writeSharedEverything"></p>
-<h3 id="读取流程"><a class="header-anchor" href="#读取流程">¶</a>读取流程</h3>
-<p>作为消息队列，大多数消息都是尾读。因此数据具有比较明显的冷热特征，即刚生产的数据是热数据，随着消费完成逐渐冷数据。所以读取将从三个维度分析，即追尾读、延迟读、回溯读。</p>
-<h4 id="追尾读"><a class="header-anchor" href="#追尾读">¶</a>追尾读</h4>
-<p>追尾读适用于绝大多数消息消费的场景。正常情况下消息刚生产就会被消费，大量的请求都可以在我们的write buffer中读取，如下图所示。虽然数据在buffer中不是连续存储，但是由于只涉及内存寻址，读的性能可以保证。</p>
-<p><img src="https://cyblog.oss-cn-hangzhou.aliyuncs.com/%E6%B6%88%E6%81%AF%E7%B3%BB%E7%BB%9F%E8%AE%A1%E7%AE%97%E5%AD%98%E5%82%A8%E5%88%86%E7%A6%BB%E6%96%B9%E6%A1%88%E8%AE%BE%E8%AE%A1/tailingRead.png" alt="tailingRead"></p>
-<h4 id="延迟读"><a class="header-anchor" href="#延迟读">¶</a>延迟读</h4>
-<p>延迟读主要适用于那些延迟消费或者积压的场景。由于内存限制，可能实际的消息已经不在write buffer中，此时只能从存储模块进行随机读。但是由于消息自身的特性，只有很少的流量会走到此场景。此部分读优化则依赖存储部分操作系统的cache。</p>
-<p><img src="https://cyblog.oss-cn-hangzhou.aliyuncs.com/%E6%B6%88%E6%81%AF%E7%B3%BB%E7%BB%9F%E8%AE%A1%E7%AE%97%E5%AD%98%E5%82%A8%E5%88%86%E7%A6%BB%E6%96%B9%E6%A1%88%E8%AE%BE%E8%AE%A1/cacheRead.png" alt="cacheRead"></p>
-<h4 id="追赶读"><a class="header-anchor" href="#追赶读">¶</a>追赶读</h4>
-<p>追赶读的场景主要用于消费时间距离生产时间已经很久的情况。比如全量的消息重放，或者在存储上进行消息计算，跑批量任务等。此种的业务特性主要集中在与主题/分区强相关，因此在冷存储中，我们会重新组织数据，一方面将数据转化为顺序读，另一方面方便按照主题维度决定数据的有效期。</p>
-<p><img src="https://cyblog.oss-cn-hangzhou.aliyuncs.com/%E6%B6%88%E6%81%AF%E7%B3%BB%E7%BB%9F%E8%AE%A1%E7%AE%97%E5%AD%98%E5%82%A8%E5%88%86%E7%A6%BB%E6%96%B9%E6%A1%88%E8%AE%BE%E8%AE%A1/prefetching.png" alt="prefetching"></p>
-
+        <p><em>本文主要讨论消息系统计算存储分离架构的设计。</em></p>
+        
+          <a class="article-more-a" href="/2021/06/10/消息系统计算存储分离方案设计/#more">more >></a>
+        
       
 
       
@@ -1374,11 +1254,11 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color5">java</a>
+                <a href="javascript:void(0)" class="js-tag color4">FMQ</a>
               </li>
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color4">FMQ</a>
+                <a href="javascript:void(0)" class="js-tag color5">java</a>
               </li>
              
               <li class="article-tag-list-item">
@@ -1406,7 +1286,11 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color3">旅行</a>
+                <a href="javascript:void(0)" class="js-tag color3">健身</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color3">计划</a>
               </li>
              
               <li class="article-tag-list-item">
@@ -1414,15 +1298,11 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color3">旅行</a>
+              </li>
+             
+              <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color2">锁</a>
-              </li>
-             
-              <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color3">健身</a>
-              </li>
-             
-              <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color3">计划</a>
               </li>
             
             <div class="clearfix"></div>
