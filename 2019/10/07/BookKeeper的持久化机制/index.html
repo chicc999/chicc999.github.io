@@ -16,10 +16,12 @@
 <meta property="og:site_name" content="陈大白的博客">
 <meta property="og:description" content="本文为论文《Durability with BookKeeper》的精简翻译（省略废话）、注解与解读。">
 <meta property="og:locale" content="zh-CN">
-<meta property="og:updated_time" content="2020-10-19T06:42:09.132Z">
+<meta property="og:image" content="oss://cyblog/BookKeeper%E7%9A%84%E6%8C%81%E4%B9%85%E5%8C%96%E6%9C%BA%E5%88%B6/Bookie%E6%9E%B6%E6%9E%84.jpg">
+<meta property="og:updated_time" content="2021-06-20T11:17:41.372Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="BookKeeper的持久化机制">
 <meta name="twitter:description" content="本文为论文《Durability with BookKeeper》的精简翻译（省略废话）、注解与解读。">
+<meta name="twitter:image" content="oss://cyblog/BookKeeper%E7%9A%84%E6%8C%81%E4%B9%85%E5%8C%96%E6%9C%BA%E5%88%B6/Bookie%E6%9E%B6%E6%9E%84.jpg">
   
     <link rel="alternative" href="/atom.xml" title="陈大白的博客" type="application/atom+xml">
   
@@ -233,7 +235,7 @@
 </ul>
 </blockquote>
 <p>这个系统的日志可以来自不同的应用，或者同一个应用的不同实例。实际上，现在已经有些系统就已经需要并发日志，每个日志有一个writer和多个reader。举个例子，消息系统可以把每个主题映射为一个日志，这些日志可以并行写入。</p>
-<h4 id="应用并发写日志"><a class="header-anchor" href="#应用并发写日志">¶</a>应用并发写日志</h4>
+<h2 id="应用并发写日志"><a class="header-anchor" href="#应用并发写日志">¶</a>应用并发写日志</h2>
 <p>请求先写入WAL，然后再进行执行和响应客户端。对于追加写（append only）方式的日志，可以顺序的写入日志，从而减少磁盘寻道次数，这对减少常见操作对于性能的影响非常重要。</p>
 <p>解耦日志的实现和机器之间的关系，可以在机器发生永久性故障时，依旧能恢复出日志。</p>
 <ul>
@@ -243,12 +245,351 @@
 <li>另一个重要的影响是NFS上会有大量文件，并发写会导致频繁寻道。</li>
 </ul>
 <p>因此本文的目标是找一个能在多并发写入下维持高吞吐的方案。</p>
-<h4 id="主要贡献"><a class="header-anchor" href="#主要贡献">¶</a>主要贡献</h4>
-<p>BookKeeper为以写入为主的场景实现了一种没有单点故障的高效存储。单个服务器支持海量并发日志，每个日志可以有一个写入进程，多个读取进程。我们定义如下概念：</p>
+<h2 id="主要贡献"><a class="header-anchor" href="#主要贡献">¶</a>主要贡献</h2>
+<p>BookKeeper实现了一种没有单点故障的高效存储，适合以写入为主的场景。单个服务器支持海量并发日志，每个日志可以有一个写入进程，多个读取进程。我们定义如下概念：</p>
+<p>BookKeeper采用quorum协议来高效的进行日志复制。（其余部分后面有详细叙述，略）</p>
+<h1>2 使用案例</h1>
+<h2 id="Hedwig"><a class="header-anchor" href="#Hedwig">¶</a><em>Hedwig</em></h2>
+<p>基于BookKeeper构建的一个消息系统，用于发布-订阅信息。</p>
+<h2 id="HDFS-Namenode"><a class="header-anchor" href="#HDFS-Namenode">¶</a><em>HDFS Namenode</em></h2>
+<p>HDFS的一个组件。每个请求Namenode 都会同步写入日志以保证更新的持久性。为了避免在 Namenode 永久失败的情况下丢失日志中的更新。底层使用了BookKeeper。</p>
+<h1>3 BOOKKEEPER</h1>
+<p>本章主要讲BOOKKEEPER的设计和api</p>
+<h2 id="3-1-设计和架构"><a class="header-anchor" href="#3-1-设计和架构">¶</a>3.1 设计和架构</h2>
+<p>在设计中主要有以下三个抽象</p>
 <blockquote>
-<p><em>ledgers</em>: BookKeeper的日志</p>
-<p><em>entry</em>: 日志里的一条记录</p>
+<p>Bookie: BookKeeper存储用的机器，主要用来存储<em>ledger fragments</em>（注：即同一个逻辑ledger按照文件最大保存大小或时间切分的一段段实际文件）。同一个ledger会写入多个bookie，使用quorum机制进行容错，以及strip来提高性能</p>
 </blockquote>
+<blockquote>
+<p>Client: 用户用来和bookies交互的客户端。主要作用就是处理来自应用的请求，提交给bookie，并且将结果响应给应用</p>
+</blockquote>
+<blockquote>
+<p>Ledger: 日志文件的抽象，本质上是一段entry序列，每个entry有一个顺序增长的id。</p>
+<p>在BookKeeper中，我们假设同一个ledger只有一个client写入；并且ledger一旦关闭，保证所有读取这个ledger的客户端读到的日志序列都一样。</p>
+<p>额外使用一个组件来保存ledger的元数据，例如zookeeper</p>
+</blockquote>
+<p><img src="oss://cyblog/BookKeeper%E7%9A%84%E6%8C%81%E4%B9%85%E5%8C%96%E6%9C%BA%E5%88%B6/Bookie%E6%9E%B6%E6%9E%84.jpg" alt="Bookie架构"></p>
+<p>上图展示了bookie的架构。bookie使用2块磁盘，journal 盘进行同步写入和顺序读（故障恢复时）。数据被重新组织写入ledger盘，采用异步写入和随机读对外提供服务。</p>
+<h3 id="API汇总"><a class="header-anchor" href="#API汇总">¶</a>API汇总</h3>
+<p>使用 BookKeeper 的应用程序最初需要指定了一个ledger的writer。ledger writer 负责创建ledger,以及向次ledger追加写入数据。</p>
+<ul>
+<li>
+<p><strong>只有ledger的writer可以向其写入数据。</strong></p>
+</li>
+<li>
+<p>写入一定量的数据以后，ledger writer 会关闭这个ledger。</p>
+</li>
+<li>
+<p>一旦ledger被关闭，它的数据就是不可变的。</p>
+</li>
+<li>
+<p>ledger可以被多个客户端并发读</p>
+</li>
+</ul>
+<p>客户端可以用来操作ledger的主要api如下：</p>
+<ul>
+<li>创建ledger</li>
+<li>向ledger添加数据</li>
+<li>读ledger数据</li>
+<li>关闭ledger，禁止后续写入</li>
+<li>删除ledger</li>
+</ul>
+<h3 id="创建和使用ledger"><a class="header-anchor" href="#创建和使用ledger">¶</a>创建和使用ledger</h3>
+<ul>
+<li>当client创建ledger时，会从可用的bookie集合中选出ensemble台，并将此信息当做Ledger的元数据进行存储。</li>
+<li>client同时会决定需要写入的quorum配置，当quorum为f+1时可以容忍f台机器故障</li>
+<li>为了保护日志完整性和正确性，会保存每条日志摘要认证信息</li>
+</ul>
+<p>![Basic BookKeeper operation](oss://cyblog/BookKeeper的持久化机制/Basic BookKeeper operation.jpg)</p>
+<p>图2展示了（ensemble=3，quorum=2）配置下的读写，可以容忍1台bookie宕机。</p>
+<h4 id="写入"><a class="header-anchor" href="#写入">¶</a>写入</h4>
+<ul>
+<li>对于每个请求，从可用的三台bookie中选择2台，进行写入；</li>
+<li>为每个请求顺序的分配id</li>
+<li>使用条带化策略进行生产，即选择bookie时，采用轮询策略**（注：即请求0写入bookie 0和bookie1，请求1写入bookie1和bookie2……以此类推）**</li>
+<li>注意quorum如果配置大于ensemble则无法正常工作</li>
+<li>如果bookie宕机，客户端会替换掉此bookie</li>
+<li>BookKeeper使用ZooKeeper来进行ledger的配置变更管理</li>
+</ul>
+<h4 id="读取"><a class="header-anchor" href="#读取">¶</a>读取</h4>
+<ul>
+<li>读取一条指定的记录e,ledger的reader可以从quorum个存有此记录的bookie中读取</li>
+<li>当一条记录被完全写入到quorum个副本都成功，这条记录才算复制成功，我们称为已提交。为了让reader只能读到已提交的信息，我们需要writer关闭ledger以后才能读取**（注：后面这条会做优化）**</li>
+</ul>
+<h3 id="关闭ledger"><a class="header-anchor" href="#关闭ledger">¶</a>关闭ledger</h3>
+<ul>
+<li>
+<p>关闭ledger可以避免2个client从同一个ledger中读取到不同的日志。</p>
+<ul>
+<li>比如一个writer成功写入了x条日志，正在写入第x+1条但是还没成功，只写到部分副本。两个读客户端可能会分别返回x和x+1条日志（注**：原文举例不太好，实际和多个客户端没关系，是如何避免读取到未确认的日志的问题。即reader不知道读到的最后一条是真的写成功，还是仅仅在所读取的副本中写成功**）</li>
+</ul>
+</li>
+<li>
+<p>当关闭ledger时，我们把ledger中最后写成功的日志条目作为ledger的元数据进行记录。基本的设计思路就是用共识来保证ledgers的视图一致。bookkeeper使用zookeeper作为共识的实现，它实现了原子广播。</p>
+</li>
+<li>
+<p>writer可能会在关闭ledger前就宕机，所以我们需要一个机制来保证ledger最终会被关闭。</p>
+</li>
+</ul>
+<h3 id="Ledger-恢复"><a class="header-anchor" href="#Ledger-恢复">¶</a><em>Ledger</em> 恢复</h3>
+<p>writer可能会在关闭ledger前就宕机，这时候reader不清楚最后一条entry是什么，所以需要 ledger 恢复机制。</p>
+<p>当reader去ledger上读取时发现ledger的状态是未关闭，则触发ledger恢复阶段。恢复阶段的主要工作有：</p>
+<ul>
+<li>确定ledger的最后一条写入条目</li>
+<li>将此信息写入元信息中存储</li>
+</ul>
+<p>确定最后一条日志流程：</p>
+<ul>
+<li>可以从第一条记录开始，看是否满足quorum条件</li>
+<li>为了加快恢复
+<ul>
+<li>对于每个请求的写入，带上目前已经确认的最后一条日志的id，即last add confirmed (LAC)</li>
+<li>恢复阶段，先从每个bookie中读取次ledger的LAC。恢复程序可以从最高的LAC开始逐条判断，直到找到真正的最后一条。</li>
+</ul>
+</li>
+</ul>
+<h3 id="Fencing"><a class="header-anchor" href="#Fencing">¶</a><em>Fencing</em></h3>
+<p>在ledger recovery阶段，可能出现计算出的LAC是x，但同时writer又去写了x+1的场景。为了避免这种情况，设置一个标志位，在开始ledger recovery之前，就禁止writer再进行写入。</p>
+<h3 id="从开启的ledger读取数据"><a class="header-anchor" href="#从开启的ledger读取数据">¶</a>从开启的ledger读取数据</h3>
+<p>存在一些场景，（注:应用对数据的实时性要求较高）,应用程序无法等ledger关闭以后再读取数据。例如热备的两个节点，如果等关闭后再读取会导致节点数据差距过大导致变成冷备。为了避免这种情况，要支持从未关闭的ledger中读取数据。</p>
+<p>由此引入LAC机制，LAC之前的数据都是已经被完整复制成功的日志。为了让ledger reader读到的数据相同，最终需要关闭日志和让ledger reader感知LAC</p>
+<h3 id="多组ledger"><a class="header-anchor" href="#多组ledger">¶</a>多组ledger</h3>
+<p>如前文及图所示，一般采用2块盘。日志盘用于同步顺序写入日志，由多个ledger共享。当日志被写盘成功（注：flush+fsync）bookie就会向客户端确认写入成功。</p>
+<p>另外一块ledger专用的磁盘用来提供读请求，因此读流量不会影响到日志磁盘的写入（注：指不影响日志盘的顺序写，可以避免随机写的寻道等，但是读请求依然有可能影响pagecache以及触发缺页中断等）。</p>
+<p><strong>在最初实现时，每个ledger是一个独立的文件。但是为了避免ledger所在磁盘的随机写入带来的性能下降，在目前的实现中会有entry log 来作为多个ledger聚合后实际的写入</strong>。（此处有疑问，由于ledger可以异步写盘，在ssd下多少个活跃的ledger才会导致性能降低？根据kafka的经验，500以内都不会有明显瓶颈，需要测试）</p>
+<p>对于每个ledger，维护每条记录在entry log中的索引信息。为了避免更新索引时触发寻道，我们将索引页缓存在内存中。这个cache的目的主要是用来分摊多个请求写磁盘的成本（类似group commit）</p>
+<p>设计的主要目标是考虑以写为主的工作模式，同时兼顾读性能。请求在写入日志盘并同步写盘后就会立即返回，ledger则异步写盘且大多数都是顺序写以追上日志盘的写入速度。</p>
+<p>为了处理读请求，必须记录请求的日志在entry log中的位置（即必须记录索引）。如果索引被缓存在磁盘，则需要1次寻道，否则则至少需要2次寻道。操作系统和磁盘的预读提升了读连续数据时候的性能。</p>
+<h3 id="元数据"><a class="header-anchor" href="#元数据">¶</a>元数据</h3>
+<p>元数据包括：</p>
+<ul>
+<li>
+<p>ledger中ensemble的组成</p>
+</li>
+<li>
+<p>写 quorum</p>
+</li>
+<li>
+<p>ledger状态</p>
+</li>
+<li>
+<p>最后一条写入的entry id</p>
+</li>
+<li>
+<p>其他信息</p>
+</li>
+</ul>
+<p>元数据的存储推荐使用zookeeper,虽然从设计上来说任何支持cas语义的系统都可以。但是当活跃ledger的数量到千万至上亿的级别，就需要一个扩展性更强的系统（注：比如实现muti-raft这些）。</p>
+<p>对于bookie的可用性也依赖zookeeper,因为提供了临时节点以及watch机制。</p>
+<h1>4 评价</h1>
+<h3 id="硬件配置"><a class="header-anchor" href="#硬件配置">¶</a>硬件配置</h3>
+<table>
+<thead>
+<tr>
+<th>部件</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CPU</td>
+<td>2 Quad Core Intel Xeon 2.5Ghz (4c 2.5G)</td>
+</tr>
+<tr>
+<td>RAM</td>
+<td>16G</td>
+</tr>
+<tr>
+<td>network interface</td>
+<td>1 Gbit/s</td>
+</tr>
+<tr>
+<td>drives</td>
+<td>4 * 1TB SATA 7200 RPM</td>
+</tr>
+</tbody>
+</table>
+<p>在这个硬件水平对于单个bookie纯写测试，1kb的载荷，22.5k/s的吞吐量以及1.2ms的延迟。下文使用 nE-qQ 代表ensemble 数量是 n 写入 quorum是 q。</p>
+<h3 id="吞吐量-延迟"><a class="header-anchor" href="#吞吐量-延迟">¶</a>吞吐量-延迟</h3>
+<p>ledger配置3E-2Q</p>
+<p>![Throughput vs. Latency](oss://cyblog/BookKeeper的持久化机制/Throughput vs. Latency.jpg)</p>
+<p>图上为一个writer的测试结果，高吞吐主要依赖outstanding operations（注：其实就是不用等上一个请求响应回来就可以发下一个请求，pipeline。但这个设计也就要求服务端必须对来自同一个writer的请求排序，比如用同一个线程进行处理）。</p>
+<p>后面分析了一堆batch和pipeline的优劣，batch会增加延迟，pipeline则可以做到低延迟下保证高吞吐。</p>
+<p><strong>注：</strong></p>
+<ul>
+<li><strong>这里作者有点偏向性，batch虽然会带来延迟，但是batch后带来的列式压缩比的提高可以节省网络IO,也可以通过协议聚合多条消息模拟成1条消息写入从而节省cpu。而且batch和pipeline并不矛盾，成年人不做选择，都要。</strong></li>
+<li>单个writer的风险之一在于很容易因为网络延迟过高，瓶颈出现在tcp滑动窗口层面。所以需要有个机制动态调整滑动窗口/receive buffer的大小</li>
+</ul>
+<h3 id="多writers"><a class="header-anchor" href="#多writers">¶</a>多<em>writers</em></h3>
+<p>单个客户端无法充分使用bookie性能。下面表格中我们使用12个writer同时写入一组bookie，来观察吞吐量。</p>
+<p>![Multiple writers](oss://cyblog/BookKeeper的持久化机制/Multiple writers.jpg)</p>
+<p>我们可以观察到：</p>
+<ul>
+<li>对于较小的载荷，多个客户端的吞吐量远高于单个客户端</li>
+<li>对于较大的载荷，吞吐量受限于bookie写磁盘的速度；如果把bookie数量增加（6E），则吞吐量也会增加</li>
+</ul>
+<p><strong>注：</strong></p>
+<ul>
+<li><strong>当载荷大于1k时</strong>
+<ul>
+<li><strong>同样的配置下，吞吐量几乎线性下降，说明瓶颈确实在IO上</strong></li>
+<li><strong>对于3E2Q的配置，以1k载荷为例，写入31.45k/s则流量为31M/s，考虑3个bookie，2副本，则每个Bookie的写入为20M/s；对于3E3Q的配置，计算出的写入几乎一致</strong></li>
+<li><strong>机械盘的写入一般为80-150M/s，为什么只有20M/s就到达了磁盘IO瓶颈？</strong></li>
+</ul>
+</li>
+<li><strong>当载荷为128B时</strong>
+<ul>
+<li><strong>3E2Q的配置下，单个bookie IO仅仅为10M/s，根据大载荷的配置肯定没有到达IO瓶颈，那么瓶颈在cpu上还是磁盘的写放大（大量小数据）上？如果在cpu上，根据单客户端6w+的吞吐，总的吞吐应该在24w左右（根据前文分析单客户端仅能使用单线程处理）。</strong></li>
+</ul>
+</li>
+</ul>
+<h3 id="多个ledgers"><a class="header-anchor" href="#多个ledgers">¶</a>多个<em>ledgers</em></h3>
+<p>下图展示了只有一个writer时，ledger数量变化对于吞吐量的影响。</p>
+<ul>
+<li>线BK代表上文实现的bookkeeper</li>
+<li>BK-File代表ledger日志不聚合，每个ledger使用2个文件，一个保存内容一个保存索引</li>
+<li>NFS代表挂载在NFS上</li>
+</ul>
+<p>![Concurrent ledgers](oss://cyblog/BookKeeper的持久化机制/Concurrent ledgers.jpg)</p>
+<ul>
+<li>对于BK,ledger增加到1w可以维持吞吐量不变；并验证到达10w也不会有变化</li>
+<li>另外两种实现在ledger增加时吞吐量会降低</li>
+<li>由于磁盘定位，BK-File的实现吞吐量下降明显；由于每个ledger都需要2个文件，在ledger超过1000以后，甚至吞吐量落后于NFS</li>
+</ul>
+<p><strong>注：</strong></p>
+<ul>
+<li>
+<p><strong>此图实际采用的是对数坐标（间隔相等的两个点差值不等，取对数后相等），只是标注的时候没有按对数标注（只是略微吐槽下哈哈）；另外影响吞吐的主要是活跃ledger的数量，而已经close的ledger则对性能并没有影响</strong></p>
+</li>
+<li>
+<p><strong>单个客户端时吞吐量三种方式相同，那多个客户端少量ledger时，BK相比BK-FILE的吞吐量如何？</strong></p>
+</li>
+<li>
+<p><strong>由于ssd成本持续降低，如果hhd换成ssd，是否磁盘的定位时间就不再是瓶颈？异步写盘测试结果如下（由于BK-FILE组织ledger使用单独磁盘就相当于kafka，所以用的kafka默认压测程序，1K消息）：</strong></p>
+<table>
+<thead>
+<tr>
+<th>分区数</th>
+<th>TPS</th>
+<th>Avg(ms)</th>
+<th>TP90</th>
+<th>TP95</th>
+<th>TP99</th>
+<th>Max</th>
+<th>CPU(idle)</th>
+<th>MEM(GB)</th>
+<th>wMB/s</th>
+<th>Util(%)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>10</td>
+<td>173364</td>
+<td>1</td>
+<td>0</td>
+<td>1</td>
+<td>32</td>
+<td>1244</td>
+<td>79.19</td>
+<td>16.94</td>
+<td>171.11</td>
+<td>16.94</td>
+</tr>
+<tr>
+<td>40</td>
+<td>180865</td>
+<td>1</td>
+<td>0</td>
+<td>1</td>
+<td>31</td>
+<td>1404</td>
+<td>80.3</td>
+<td>16.1</td>
+<td>232.76</td>
+<td>23.28</td>
+</tr>
+<tr>
+<td>160</td>
+<td>175174</td>
+<td>0</td>
+<td>1</td>
+<td>1</td>
+<td>1</td>
+<td>1243</td>
+<td>79.05</td>
+<td>17.7</td>
+<td>198.27</td>
+<td>20.89</td>
+</tr>
+<tr>
+<td>320</td>
+<td>170614</td>
+<td>0</td>
+<td>1</td>
+<td>1</td>
+<td>7</td>
+<td>484</td>
+<td>80.29</td>
+<td>15.45</td>
+<td>187.99</td>
+<td>19.22</td>
+</tr>
+<tr>
+<td>640</td>
+<td>122440</td>
+<td>0</td>
+<td>1</td>
+<td>1</td>
+<td>1</td>
+<td>280</td>
+<td>83.86</td>
+<td>13.65</td>
+<td>143.94</td>
+<td>12.5</td>
+</tr>
+<tr>
+<td>1280</td>
+<td>58525</td>
+<td>0</td>
+<td>1</td>
+<td>1</td>
+<td>7</td>
+<td>274</td>
+<td>89.48</td>
+<td>7.5</td>
+<td>67.24</td>
+<td>4.2</td>
+</tr>
+<tr>
+<td>2560</td>
+<td>8541</td>
+<td>1</td>
+<td>1</td>
+<td>2</td>
+<td>2</td>
+<td>251</td>
+<td>98.1</td>
+<td>9.65</td>
+<td>12.59</td>
+<td>0.91</td>
+</tr>
+</tbody>
+</table>
+<p>可见换成ssd以后，分区数过多引起磁盘性能下降的阈值从hhd的10到了320-640之间，但是分区数过多依然会对性能造成较大影响</p>
+</li>
+<li>
+<p><strong>如果将三种方案结合起来，采用BK-FILE方式，但是BK-FILE的文件实际写入NFS（或者其他云存储/共享存储）。由于在云存储中磁盘定位大幅度减少，触发磁盘定位瓶颈的阈值大幅度提高，加上使用ssd，是否随机写入就不再是一个问题？</strong></p>
+</li>
+<li>
+<p><strong>补充下阿里的测试结果（来自中间件团队博客），7200转机械盘，每个主题8分区；kafka可以认为是BK-FILE模式，RocketMQ可以近似看做BK模式，可以看到在512分区的时候吞吐量还不受影响，而1024时性能下降较为厉害。而在此论文中10 ledger时就受到了明显影响，原因不知</strong></p>
+<p>![rmq vs kafka](oss://cyblog/BookKeeper的持久化机制/rmq vs kafka.png)</p>
+</li>
+</ul>
+<h1>5 相关工作</h1>
+<p>介绍了做了相关工作的一些论文，略。</p>
+<h1>6 总结</h1>
+<p>对于数据库、文件系统、消息中间件这些有状态的系统，持久化是一个重要的属性。很多系统为了持久化，用日志来记录更新请求和用于故障恢复。对于这些系统，日志是关键的组成部分，必须有效和可靠。我们设计了BookKeeper来满足这种需求。后面重复了下性能以及设计，略。</p>
 <hr class="footnotes-sep">
 <section class="footnotes">
 <ol class="footnotes-list">
@@ -417,7 +758,7 @@
                 </span>
                 <span class="tooltip-content">
                     <div class="toc-article">
-                    <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#null"><span class="toc-number">1.</span> <span class="toc-text">摘要</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#null"><span class="toc-number">2.</span> <span class="toc-text">1 介绍</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#应用并发写日志"><span class="toc-number">2.0.0.1.</span> <span class="toc-text">¶应用并发写日志</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#主要贡献"><span class="toc-number">2.0.0.2.</span> <span class="toc-text">¶主要贡献</span></a></li></ol></li></ol></li></ol></li></ol>
+                    <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#null"><span class="toc-number">1.</span> <span class="toc-text">摘要</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#null"><span class="toc-number">2.</span> <span class="toc-text">1 介绍</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#应用并发写日志"><span class="toc-number">2.1.</span> <span class="toc-text">¶应用并发写日志</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#主要贡献"><span class="toc-number">2.2.</span> <span class="toc-text">¶主要贡献</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#null"><span class="toc-number">3.</span> <span class="toc-text">2 使用案例</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#Hedwig"><span class="toc-number">3.1.</span> <span class="toc-text">¶Hedwig</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#HDFS-Namenode"><span class="toc-number">3.2.</span> <span class="toc-text">¶HDFS Namenode</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#null"><span class="toc-number">4.</span> <span class="toc-text">3 BOOKKEEPER</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#3-1-设计和架构"><span class="toc-number">4.1.</span> <span class="toc-text">¶3.1 设计和架构</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#API汇总"><span class="toc-number">4.1.1.</span> <span class="toc-text">¶API汇总</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#创建和使用ledger"><span class="toc-number">4.1.2.</span> <span class="toc-text">¶创建和使用ledger</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#写入"><span class="toc-number">4.1.2.1.</span> <span class="toc-text">¶写入</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#读取"><span class="toc-number">4.1.2.2.</span> <span class="toc-text">¶读取</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#关闭ledger"><span class="toc-number">4.1.3.</span> <span class="toc-text">¶关闭ledger</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Ledger-恢复"><span class="toc-number">4.1.4.</span> <span class="toc-text">¶Ledger 恢复</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Fencing"><span class="toc-number">4.1.5.</span> <span class="toc-text">¶Fencing</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#从开启的ledger读取数据"><span class="toc-number">4.1.6.</span> <span class="toc-text">¶从开启的ledger读取数据</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#多组ledger"><span class="toc-number">4.1.7.</span> <span class="toc-text">¶多组ledger</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#元数据"><span class="toc-number">4.1.8.</span> <span class="toc-text">¶元数据</span></a></li></ol></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#null"><span class="toc-number">5.</span> <span class="toc-text">4 评价</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#硬件配置"><span class="toc-number">5.0.1.</span> <span class="toc-text">¶硬件配置</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#吞吐量-延迟"><span class="toc-number">5.0.2.</span> <span class="toc-text">¶吞吐量-延迟</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#多writers"><span class="toc-number">5.0.3.</span> <span class="toc-text">¶多writers</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#多个ledgers"><span class="toc-number">5.0.4.</span> <span class="toc-text">¶多个ledgers</span></a></li></ol></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#null"><span class="toc-number">6.</span> <span class="toc-text">5 相关工作</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#null"><span class="toc-number">7.</span> <span class="toc-text">6 总结</span></a></li></ol>
                     </div>
                 </span>
             </div>
@@ -574,6 +915,14 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
           <ul class="article-tag-list" q-show="showTags">
              
               <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color4">FMQ</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color5">消息队列</a>
+              </li>
+             
+              <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color5">论文研读</a>
               </li>
              
@@ -586,19 +935,7 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color5">消息队列</a>
-              </li>
-             
-              <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color4">FMQ</a>
-              </li>
-             
-              <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color5">java</a>
-              </li>
-             
-              <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color4">failover</a>
               </li>
              
               <li class="article-tag-list-item">
@@ -622,15 +959,11 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color3">健身</a>
-              </li>
-             
-              <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color3">计划</a>
-              </li>
-             
-              <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color4">JVM</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color2">锁</a>
               </li>
              
               <li class="article-tag-list-item">
@@ -638,7 +971,15 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color2">锁</a>
+                <a href="javascript:void(0)" class="js-tag color4">failover</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color3">健身</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color3">计划</a>
               </li>
             
             <div class="clearfix"></div>
