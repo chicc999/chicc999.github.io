@@ -17,7 +17,12 @@
 <meta property="og:description" content="本文为论文《Durability with BookKeeper》的精简翻译（省略废话）、注解与解读。">
 <meta property="og:locale" content="zh-CN">
 <meta property="og:image" content="https://cyblog.oss-cn-hangzhou.aliyuncs.com/BookKeeper%E7%9A%84%E6%8C%81%E4%B9%85%E5%8C%96%E6%9C%BA%E5%88%B6/Bookie%E6%9E%B6%E6%9E%84.jpg">
-<meta property="og:updated_time" content="2021-06-20T11:53:40.345Z">
+<meta property="og:image" content="https://cyblog.oss-cn-hangzhou.aliyuncs.com/BookKeeper%E7%9A%84%E6%8C%81%E4%B9%85%E5%8C%96%E6%9C%BA%E5%88%B6/Basic%20BookKeeper%20operation.jpg">
+<meta property="og:image" content="https://cyblog.oss-cn-hangzhou.aliyuncs.com/BookKeeper%E7%9A%84%E6%8C%81%E4%B9%85%E5%8C%96%E6%9C%BA%E5%88%B6/Throughput%20vs.%20Latency.jpg">
+<meta property="og:image" content="https://cyblog.oss-cn-hangzhou.aliyuncs.com/BookKeeper%E7%9A%84%E6%8C%81%E4%B9%85%E5%8C%96%E6%9C%BA%E5%88%B6/Multiple%20writers.jpg">
+<meta property="og:image" content="https://cyblog.oss-cn-hangzhou.aliyuncs.com/BookKeeper%E7%9A%84%E6%8C%81%E4%B9%85%E5%8C%96%E6%9C%BA%E5%88%B6/Concurrent%20ledgers.jpg">
+<meta property="og:image" content="https://cyblog.oss-cn-hangzhou.aliyuncs.com/BookKeeper%E7%9A%84%E6%8C%81%E4%B9%85%E5%8C%96%E6%9C%BA%E5%88%B6/rmq%20vs%20kafka.png">
+<meta property="og:updated_time" content="2021-06-21T03:20:46.682Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="BookKeeper的持久化机制">
 <meta name="twitter:description" content="本文为论文《Durability with BookKeeper》的精简翻译（省略废话）、注解与解读。">
@@ -300,7 +305,7 @@
 <li>client同时会决定需要写入的quorum配置，当quorum为f+1时可以容忍f台机器故障</li>
 <li>为了保护日志完整性和正确性，会保存每条日志摘要认证信息</li>
 </ul>
-<p>![Basic BookKeeper operation](<a href="https://cyblog.oss-cn-hangzhou.aliyuncs.com/BookKeeper%E7%9A%84%E6%8C%81%E4%B9%85%E5%8C%96%E6%9C%BA%E5%88%B6/Basic" target="_blank" rel="noopener">https://cyblog.oss-cn-hangzhou.aliyuncs.com/BookKeeper的持久化机制/Basic</a> BookKeeper operation.jpg)</p>
+<p><img src="https://cyblog.oss-cn-hangzhou.aliyuncs.com/BookKeeper%E7%9A%84%E6%8C%81%E4%B9%85%E5%8C%96%E6%9C%BA%E5%88%B6/Basic%20BookKeeper%20operation.jpg" alt="Basic BookKeeper operation"></p>
 <p>图2展示了（ensemble=3，quorum=2）配置下的读写，可以容忍1台bookie宕机。</p>
 <h4 id="写入"><a class="header-anchor" href="#写入">¶</a>写入</h4>
 <ul>
@@ -412,7 +417,7 @@
 <p>在这个硬件水平对于单个bookie纯写测试，1kb的载荷，22.5k/s的吞吐量以及1.2ms的延迟。下文使用 nE-qQ 代表ensemble 数量是 n 写入 quorum是 q。</p>
 <h3 id="吞吐量-延迟"><a class="header-anchor" href="#吞吐量-延迟">¶</a>吞吐量-延迟</h3>
 <p>ledger配置3E-2Q</p>
-<p>![Throughput vs. Latency](<a href="https://cyblog.oss-cn-hangzhou.aliyuncs.com/BookKeeper%E7%9A%84%E6%8C%81%E4%B9%85%E5%8C%96%E6%9C%BA%E5%88%B6/Throughput" target="_blank" rel="noopener">https://cyblog.oss-cn-hangzhou.aliyuncs.com/BookKeeper的持久化机制/Throughput</a> vs. Latency.jpg)</p>
+<p><img src="https://cyblog.oss-cn-hangzhou.aliyuncs.com/BookKeeper%E7%9A%84%E6%8C%81%E4%B9%85%E5%8C%96%E6%9C%BA%E5%88%B6/Throughput%20vs.%20Latency.jpg" alt="Throughput vs. Latency"></p>
 <p>图上为一个writer的测试结果，高吞吐主要依赖outstanding operations（注：其实就是不用等上一个请求响应回来就可以发下一个请求，pipeline。但这个设计也就要求服务端必须对来自同一个writer的请求排序，比如用同一个线程进行处理）。</p>
 <p>后面分析了一堆batch和pipeline的优劣，batch会增加延迟，pipeline则可以做到低延迟下保证高吞吐。</p>
 <p><strong>注：</strong></p>
@@ -422,7 +427,7 @@
 </ul>
 <h3 id="多writers"><a class="header-anchor" href="#多writers">¶</a>多<em>writers</em></h3>
 <p>单个客户端无法充分使用bookie性能。下面表格中我们使用12个writer同时写入一组bookie，来观察吞吐量。</p>
-<p>![Multiple writers](<a href="https://cyblog.oss-cn-hangzhou.aliyuncs.com/BookKeeper%E7%9A%84%E6%8C%81%E4%B9%85%E5%8C%96%E6%9C%BA%E5%88%B6/Multiple" target="_blank" rel="noopener">https://cyblog.oss-cn-hangzhou.aliyuncs.com/BookKeeper的持久化机制/Multiple</a> writers.jpg)</p>
+<p><img src="https://cyblog.oss-cn-hangzhou.aliyuncs.com/BookKeeper%E7%9A%84%E6%8C%81%E4%B9%85%E5%8C%96%E6%9C%BA%E5%88%B6/Multiple%20writers.jpg" alt="Multiple writers"></p>
 <p>我们可以观察到：</p>
 <ul>
 <li>对于较小的载荷，多个客户端的吞吐量远高于单个客户端</li>
@@ -450,7 +455,7 @@
 <li>BK-File代表ledger日志不聚合，每个ledger使用2个文件，一个保存内容一个保存索引</li>
 <li>NFS代表挂载在NFS上</li>
 </ul>
-<p>![Concurrent ledgers](<a href="https://cyblog.oss-cn-hangzhou.aliyuncs.com/BookKeeper%E7%9A%84%E6%8C%81%E4%B9%85%E5%8C%96%E6%9C%BA%E5%88%B6/Concurrent" target="_blank" rel="noopener">https://cyblog.oss-cn-hangzhou.aliyuncs.com/BookKeeper的持久化机制/Concurrent</a> ledgers.jpg)</p>
+<p><img src="https://cyblog.oss-cn-hangzhou.aliyuncs.com/BookKeeper%E7%9A%84%E6%8C%81%E4%B9%85%E5%8C%96%E6%9C%BA%E5%88%B6/Concurrent%20ledgers.jpg" alt="Concurrent ledgers"></p>
 <ul>
 <li>对于BK,ledger增加到1w可以维持吞吐量不变；并验证到达10w也不会有变化</li>
 <li>另外两种实现在ledger增加时吞吐量会降低</li>
@@ -583,7 +588,7 @@
 </li>
 <li>
 <p><strong>补充下阿里的测试结果（来自中间件团队博客），7200转机械盘，每个主题8分区；kafka可以认为是BK-FILE模式，RocketMQ可以近似看做BK模式，可以看到在512分区的时候吞吐量还不受影响，而1024时性能下降较为厉害。而在此论文中10 ledger时就受到了明显影响，原因不知</strong></p>
-<p>![rmq vs kafka](<a href="https://cyblog.oss-cn-hangzhou.aliyuncs.com/BookKeeper%E7%9A%84%E6%8C%81%E4%B9%85%E5%8C%96%E6%9C%BA%E5%88%B6/rmq" target="_blank" rel="noopener">https://cyblog.oss-cn-hangzhou.aliyuncs.com/BookKeeper的持久化机制/rmq</a> vs kafka.png)</p>
+<p><img src="https://cyblog.oss-cn-hangzhou.aliyuncs.com/BookKeeper%E7%9A%84%E6%8C%81%E4%B9%85%E5%8C%96%E6%9C%BA%E5%88%B6/rmq%20vs%20kafka.png" alt="rmq vs kafka"></p>
 </li>
 </ul>
 <h1>5 相关工作</h1>
@@ -915,22 +920,6 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
           <ul class="article-tag-list" q-show="showTags">
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color4">中间件</a>
-              </li>
-             
-              <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color5">消息队列</a>
-              </li>
-             
-              <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color5">java</a>
-              </li>
-             
-              <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color4">FMQ</a>
-              </li>
-             
-              <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color5">论文研读</a>
               </li>
              
@@ -939,7 +928,19 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color4">failover</a>
+                <a href="javascript:void(0)" class="js-tag color4">中间件</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color5">消息队列</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color4">FMQ</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color5">java</a>
               </li>
              
               <li class="article-tag-list-item">
@@ -951,6 +952,10 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color4">failover</a>
+              </li>
+             
+              <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color3">线程</a>
               </li>
              
@@ -959,19 +964,7 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color3">健身</a>
-              </li>
-             
-              <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color3">计划</a>
-              </li>
-             
-              <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color4">jvm</a>
-              </li>
-             
-              <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color2">锁</a>
               </li>
              
               <li class="article-tag-list-item">
@@ -979,7 +972,19 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color2">锁</a>
+              </li>
+             
+              <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color3">旅行</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color3">健身</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color3">计划</a>
               </li>
             
             <div class="clearfix"></div>
