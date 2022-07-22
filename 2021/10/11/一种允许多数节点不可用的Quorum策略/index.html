@@ -6,19 +6,20 @@
   <meta name="renderer" content="webkit">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <link rel="dns-prefetch" href="http://chenyun0322.cn">
-  <title>Archives: 2018/11 | 陈大白的博客</title>
+  <title>一种允许多数节点不可用的Quorum策略 | 陈大白的博客</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <meta name="description" content="做个吃货，做个二货。">
-<meta name="keywords" content="程序猿,极客,编程,代码,开源,IT网站,Developer,Programmer,Coder,Geek">
-<meta property="og:type" content="website">
-<meta property="og:title" content="陈大白的博客">
-<meta property="og:url" content="http://chenyun0322.cn/archives/2018/11/index.html">
+  <meta name="description" content="本文探讨了一种Quorum策略，可以在大多数节点失效的情况下达成一致。以及对这种Quorum策略的可用性讨论。">
+<meta name="keywords" content="一致性算法">
+<meta property="og:type" content="article">
+<meta property="og:title" content="一种允许多数节点不可用的Quorum策略">
+<meta property="og:url" content="http://chenyun0322.cn/2021/10/11/一种允许多数节点不可用的Quorum策略/index.html">
 <meta property="og:site_name" content="陈大白的博客">
-<meta property="og:description" content="做个吃货，做个二货。">
+<meta property="og:description" content="本文探讨了一种Quorum策略，可以在大多数节点失效的情况下达成一致。以及对这种Quorum策略的可用性讨论。">
 <meta property="og:locale" content="zh-CN">
+<meta property="og:updated_time" content="2021-10-29T12:41:33.899Z">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="陈大白的博客">
-<meta name="twitter:description" content="做个吃货，做个二货。">
+<meta name="twitter:title" content="一种允许多数节点不可用的Quorum策略">
+<meta name="twitter:description" content="本文探讨了一种Quorum策略，可以在大多数节点失效的情况下达成一致。以及对这种Quorum策略的可用性讨论。">
   
     <link rel="alternative" href="/atom.xml" title="陈大白的博客" type="application/atom+xml">
   
@@ -174,52 +175,174 @@
             <canvas data-colors="#eaeaea" data-sectionHeight="100" data-contentId="js-content" id="myCanvas1" class="anm-canvas"></canvas>
           </div>
           <div id="js-content" class="content-ll">
-            
-  
-  
+            <article id="post-一种允许多数节点不可用的Quorum策略" class="article article-type-post " itemscope itemprop="blogPost">
+  <div class="article-inner">
     
-    
-      
-      
-      <section class="archives-wrap">
-        <div class="archive-year-wrap">
-          <a href="/archives/2018" class="archive-year">2018</a>
-        </div>
-        <div class="archives">
-    
-    <article class="archive-article archive-type-post">
-  <div class="archive-article-inner">
-    <header class="archive-article-header">
-      	<div class="article-meta">
-	      	<a href="/2018/11/05/FMQ之主从数据同步/" class="archive-article-date">
-  	<time datetime="2018-11-05T08:45:00.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2018-11-05</time>
-</a>
-        </div>
-    	 
+      <header class="article-header">
+        
   
-    <h1 itemprop="name">
-      <a class="archive-article-title" href="/2018/11/05/FMQ之主从数据同步/">FMQ之主从数据同步</a>
+    <h1 class="article-title" itemprop="name">
+      一种允许多数节点不可用的Quorum策略
     </h1>
   
 
-        <div class="article-info info-on-right">
-          
+<!--显示阅读次数-->
+
+  <br/>
+  <a class="cloud-tie-join-count" href="javascript:void(0);" style="color:gray;font-size:14px;">
+  <span class="icon-sort"></span>
+  <span style="color:#ef7522;font-size:14px;">
+            阅读数: <span id="busuanzi_value_page_pv"></span>次 &nbsp;&nbsp;
+  </span>
+  </a>
+
+<!--显示阅读次数完毕-->
+        
+        <a href="/2021/10/11/一种允许多数节点不可用的Quorum策略/" class="archive-article-date">
+  	<time datetime="2021-10-11T07:10:04.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2021-10-11</time>
+</a>
+        
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p><em>本文探讨了一种Quorum策略，可以在大多数节点失效的情况下达成一致。以及对这种Quorum策略的可用性讨论。</em></p>
+<a id="more"></a>
+<h1>1 背景</h1>
+<p>在《JPacificA - 一种跨域线性一致性算法》中，我们提出了一种支持跨域传输的线性一致性算法。但是这个算法只是将跨域问题进行了分割，将数据的跨域一致性分成了元数据的一致性和业务数据的一致性两个问题，并且解决了业务数据一致性的问题。而对于元数据，我们在此文中提到的各种跨域部署集群的问题依然存在，只是规模被限制在了一定范围内。</p>
+<p>集群被跨地域部署，我们在JpacificA的文章中提到了核心问题有</p>
+<blockquote>
+<p>写入响应时间长、选举时间长</p>
+</blockquote>
+<p>而当故障发生时，这个问题会被显著的放大。比如两地三中心的情况下集群按照3-2-2部署，总共7个节点，至少要4个节点达成一致。当本地的节点宕机2个或以上时，由于要和异地节点达成一致，响应时间会被放大几十乃至上百倍（取决于同城机房与异地机房之间相隔距离的倍数）。</p>
+<p>例如我们假设两地三中心进行部署(以北京上海为例)，北京同城两个数据中心的的延迟为1ms，北京到上海的延迟大约为30ms。</p>
+<p>此时如果发生同时发生2个节点故障，假设每个节点故障概率相等，那么如果需要故障后集群写入或者选举的响应时间不增加，则故障机器不能同时在北京的机器中，所以有<br>
+$$<br>
+A_5^2 / A_7^2 = 0.476<br>
+$$<br>
+的概率响应时间会从1ms上升为30ms。</p>
+<h1>2 Quorum</h1>
+<p>在现有的一致性算法中，通常对Quorum的定义为“一半以上的节点”。由于两个由一半以上节点组成的集合必然有交集，而同一个任期中每个节点又至多投出一票，以此保证正确性。</p>
+<p>但是Quorum定义为“一半以上的节点”并不是一个共识算法保证正确性的充要条件。只要Quorum策略能保证任意两个合法的Quorum集合相交后不为空集，即能保证数据的一致性。由此，我们针对跨地域部署的集群，定义以下Quorum策略：</p>
+<p><strong>假设存在若干地域,编号为1到m。某个地域i(1&lt;=i&lt;=m)任意一半以上的节点组成的集合为Qi。所有可能的Q1-Qm 中，选取任意k（m/2&lt;k&lt;=m）个集合，组成的并集即为Quorum。</strong></p>
+<p>例如我们假设进行三地部署(以北京上海杭州为例)，假设每个数据中心各有3个节点，其中上海的节点称为s1、s2、s3，杭州的节点称为h1、h2、h3,北京的节点称为b1 、b2、b3。那么由至少2个地域，每个地域有至少2个节点组成的集合，就是我们的合法Quorum。由定义可知，Quorum中至少需要存在4个节点。对于4个节点组成Quorum的场景，总共就有<br>
+$$<br>
+A_3^2 * A_3^2 = 36<br>
+$$<br>
+种可能。</p>
+<p>在以上的数据集合中，任意两个集合必有交集，以此保证算法的正确性。</p>
+<h1>3 应用</h1>
+<p>假设北京到杭州的延迟约为40ms，北京到上海的延迟大约为30ms，上海到杭州的延迟约为5ms。假设有2个节点同时发生故障，每个机器发生故障的概率相等，且均为独立事件。</p>
+<p>如果此时采用原先7节点，上海3节点、杭州2节点、北京2节点的部署模式，至少需要大多数节点确认，也就是4个节点才能完成选举和写入。如果宕机的2个节点都处于上海或者杭州数据中心，则系统的预期响应时间会从5ms上升到30-40ms。其中2个节点均处于上海和杭州的概率为<br>
+$$<br>
+A_5^2 / A_7^2 = 0.476<br>
+$$</p>
+<p>也就是说系统有47.6%的概率延迟会上升6倍以上。对于两地三中心的部署，则上升比例更加显著，可能达到几十倍以上。</p>
+<p>如果采用本文所述的Quorum策略，采用每个数据中心各3个节点部署，至少需要4个节点确认系统就可以进行选举和写入。当故障的2个节点同时处于上海或者杭州时，则系统必须等待北京数据中心的响应，则概率为<br>
+$$<br>
+A_2^1 * A_3^2 / A_9^2= 0.167<br>
+$$<br>
+如果同样是9节点部署，但是采取现有技术的策略，即至少5个节点进行确认，则需要跨地域访问北京数据中心的概率为<br>
+$$<br>
+A_5^2 / A_9^2 = 0.417<br>
+$$<br>
+可以看出本方案提出的Quorum策略对比原方案在9节点和7节点两种模式，在2个节点故障的情况下，需要访问北京数据中心的概率分别降低了60%、65%。</p>
+<h1>4 可用性</h1>
+<p>显然一个方案的收益不可能凭空产生，那么我们的Quorum策略的劣势在哪里呢？这是一个牺牲了可用性来保证延迟的策略。</p>
+<p>一个允许大多数节点宕机的Quorum策略，可用性竟然低于一个只允许少部分节点宕机的Quorum策略，听上去可能比较反直觉。但实际上通过理论计算我们能很容易的发现这一点。</p>
+<p>假设单个节点故障的概率为p，且节点故障均为独立事件，则n个节点中恰好存活m个的概率为:<br>
+$$<br>
+C_n<sup>m(1-p)</sup>mp^{n-m}<br>
+$$<br>
+我们将raft、paxos、zab等协议中采用的需要多数节点存活才能工作的策略称为多数派Quorum策略，将本文提出的通过分组来允许大多数节点失效的策略称之为分组Quorum策略。</p>
+<h2 id="4-1-多数派-Quorum-可用性"><a class="header-anchor" href="#4-1-多数派-Quorum-可用性">¶</a>4.1 多数派 Quorum 可用性</h2>
+<p>对于多数派的Quorum，n个节点至少要存活n/2+1个才可用。于是系统整体的可用性可以很方便的计算出来：<br>
+$$<br>
+\sum_{m=n/2+1}<sup>{n}C_n</sup>m(1-p)<sup>mp</sup>{n-m}<br>
+$$</p>
+<h2 id="4-2-分组Quorum可用性"><a class="header-anchor" href="#4-2-分组Quorum可用性">¶</a>4.2 分组Quorum可用性</h2>
+<p>对于本文提出的只需要分组Quorum，可用性计算要根据定义可以得出以下结论：</p>
+<ul>
+<li>如果一个分组大多数节点可用，则这个分组可用</li>
+<li>如果大多数分组可用，则分组Quorum策略可以正常工作</li>
+</ul>
+<p>首先我们来计算每个分组的可用性，假设一个分组有i个节点，则根据4.1，可用性很显然为<br>
+$$<br>
+\sum_{j=i/2+1}<sup>{i}C_i</sup>j(1-p)<sup>jp</sup>{i-j}<br>
+$$<br>
+那么对于集群整体的可用性，假设有n个分组，则可用率为<br>
+$$<br>
+\sum_{m=n/2+1}<sup>{n}C_n</sup>m(\sum_{j=i/2+1}<sup>{i}C_i</sup>j(1-p)<sup>jp</sup>{i-j})<sup>m(1-\sum_{j=i/2+1}</sup>{i}C_i<sup>j(1-p)</sup>jp<sup>{i-j})</sup>{n-m}<br>
+$$</p>
+<h2 id="4-3-对比"><a class="header-anchor" href="#4-3-对比">¶</a>4.3 对比</h2>
+<p>对于我们上文所举的示例，代入如下数据计算可用性来做对比：</p>
+<ul>
+<li>单节点故障率约为0.01，即为平均一年下线3天左右（故障加硬件维修/替换时间）</li>
+<li>总结点数量9个，3个分组，每个分组3个节点</li>
+</ul>
+<p>对于9节点的多数派Quorum，可用性为<br>
+$$<br>
+\sum_{m=5}<sup>{9}C_9</sup>m(0.99)<sup>m(0.01)</sup>{9-m} = 0.99999998781<br>
+$$<br>
+可以看到对于9节点，可用性达到了7个9。</p>
+<p>对于分组Quorum策略的可用性，我们先计算单个分组的可用性<br>
+$$<br>
+\sum_{j=2}<sup>{3}C_3</sup>j(0.99)<sup>j（0.01）</sup>{3-j} = 1-C_3<sup>1(0.99)（0.01）</sup>2 = 0.999703<br>
+$$<br>
+则带入计算整个集群的可用性<br>
+$$<br>
+1-C_3<sup>1(0.999703)（0.000297）</sup>2 = 0.999999735451594<br>
+$$<br>
+可以看到采用分组Quorum的策略后，系统可用性从7个9下降到了6个9。</p>
+<p>之所以出现这种允许故障的节点增加，但是可用性反而下降的情况，主要是因为分组以后，可以认为从第二个单个节点故障开始，对于整个系统的影响不再是一个孤立的事件，而是受之前故障节点分布的影响。相当于在任意一个节点故障后，剩余的节点对于可用性的影响已经从对等的角色，变成了带权重的角色。</p>
+<p>回过头来看7节点时采用多数派的Quorum整个系统的可用性，不难计算得到<br>
+$$<br>
+\sum_{m=4}<sup>{7}C_7</sup>m(0.99)<sup>m(0.01)</sup>{9-m} = 0.999999658<br>
+$$<br>
+7节点下多数派的Quorum的可用性与9节点分组Quorum的可用性处于同一个数量级，都为6个9左右。</p>
+<h1>5 总结</h1>
+<p>本文提出了一种Quorum策略，允许集群内大多数节点故障，并在多节点故障时显著减少高延迟的概率。特别适用于元数据集群这种规模有限的场景，由于元数据集群对于大规模部署的存储业务数据的集群，数据规模可控，不会大幅度增长。所以只需要有限的硬件成本，即可在保证可用性的情况下大幅度降低多节点故障对于延迟的影响。</p>
+
+      
+
+      
+        <div class="page-reward">
+          <a href="javascript:;" class="page-reward-btn tooltip-top">
+            <div class="tooltip tooltip-east">
+            <span class="tooltip-item">
+              赏
+            </span>
+            <span class="tooltip-content">
+              <span class="tooltip-text">
+                <span class="tooltip-inner">
+                  <p class="reward-p"><i class="icon icon-quo-left"></i>谢谢你请我吃糖果<i class="icon icon-quo-right"></i></p>
+                  <div class="reward-box">
+                    
+                    
+                  </div>
+                </span>
+              </span>
+            </span>
+          </div>
+          </a>
+        </div>
+      
+    </div>
+    <div class="article-info article-info-index">
+      
+      
 	<div class="article-tag tagcloud">
 		<i class="icon-price-tags icon"></i>
 		<ul class="article-tag-list">
 			 
         		<li class="article-tag-list-item">
-        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color5">消息队列</a>
-        		</li>
-      		 
-        		<li class="article-tag-list-item">
-        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color5">java</a>
+        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color1">一致性算法</a>
         		</li>
       		
 		</ul>
 	</div>
 
-          
+      
 	<div class="article-category tagcloud">
 		<i class="icon-book icon"></i>
 		<ul class="article-tag-list">
@@ -232,17 +355,155 @@
 	</div>
 
 
+      
+
+      
+        
+<div class="share-btn share-icons tooltip-left">
+  <div class="tooltip tooltip-east">
+    <span class="tooltip-item">
+      <a href="javascript:;" class="share-sns share-outer">
+        <i class="icon icon-share"></i>
+      </a>
+    </span>
+    <span class="tooltip-content">
+      <div class="share-wrap">
+        <div class="share-icons">
+          <a class="weibo share-sns" href="javascript:;" data-type="weibo">
+            <i class="icon icon-weibo"></i>
+          </a>
+          <a class="weixin share-sns wxFab" href="javascript:;" data-type="weixin">
+            <i class="icon icon-weixin"></i>
+          </a>
+          <a class="qq share-sns" href="javascript:;" data-type="qq">
+            <i class="icon icon-qq"></i>
+          </a>
+          <a class="douban share-sns" href="javascript:;" data-type="douban">
+            <i class="icon icon-douban"></i>
+          </a>
+          <a class="qzone share-sns" href="javascript:;" data-type="qzone">
+            <i class="icon icon-qzone"></i>
+          </a>
+          <a class="facebook share-sns" href="javascript:;" data-type="facebook">
+            <i class="icon icon-facebook"></i>
+          </a>
+          <a class="twitter share-sns" href="javascript:;" data-type="twitter">
+            <i class="icon icon-twitter"></i>
+          </a>
+          <a class="google share-sns" href="javascript:;" data-type="google">
+            <i class="icon icon-google"></i>
+          </a>
         </div>
-        <div class="clearfix"></div>
-    </header>
+      </div>
+    </span>
+  </div>
+</div>
+
+<div class="page-modal wx-share js-wx-box">
+    <a class="close js-modal-close" href="javascript:;"><i class="icon icon-close"></i></a>
+    <p>扫一扫，分享到微信</p>
+    <div class="wx-qrcode">
+      <img src="//pan.baidu.com/share/qrcode?url=http://chenyun0322.cn/2021/10/11/一种允许多数节点不可用的Quorum策略/" alt="微信分享二维码">
+    </div>
+</div>
+
+<div class="mask js-mask"></div>
+      
+      <div class="clearfix"></div>
+    </div>
   </div>
 </article>
+
+  
+<nav id="article-nav">
   
   
-    </div></section>
+    <a href="/2021/09/05/时间管理实践与落地/" id="article-nav-older" class="article-nav-link-wrap">
+      <div class="article-nav-title">时间管理实践与落地</div>
+      <i class="icon-circle-right"></i>
+    </a>
+  
+</nav>
+
+
+<aside class="wrap-side-operation">
+    <div class="mod-side-operation">
+        
+        <div class="jump-container" id="js-jump-container" style="display:none;">
+            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
+                <i class="icon-font icon-back"></i>
+            </a>
+            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
+                <i class="icon-font icon-plane jump-plane"></i>
+            </div>
+        </div>
+        
+        
+        <div class="toc-container tooltip-left">
+            <i class="icon-font icon-category"></i>
+            <div class="tooltip tooltip-east">
+                <span class="tooltip-item">
+                </span>
+                <span class="tooltip-content">
+                    <div class="toc-article">
+                    <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#null"><span class="toc-number">1.</span> <span class="toc-text">1 背景</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#null"><span class="toc-number">2.</span> <span class="toc-text">2 Quorum</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#null"><span class="toc-number">3.</span> <span class="toc-text">3 应用</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#null"><span class="toc-number">4.</span> <span class="toc-text">4 可用性</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#4-1-多数派-Quorum-可用性"><span class="toc-number">4.1.</span> <span class="toc-text">¶4.1 多数派 Quorum 可用性</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4-2-分组Quorum可用性"><span class="toc-number">4.2.</span> <span class="toc-text">¶4.2 分组Quorum可用性</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4-3-对比"><span class="toc-number">4.3.</span> <span class="toc-text">¶4.3 对比</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#null"><span class="toc-number">5.</span> <span class="toc-text">5 总结</span></a></li></ol>
+                    </div>
+                </span>
+            </div>
+        </div>
+        
+    </div>
+</aside>
+
+
+
+  
+  <section id="comments" class="comments">
+    <style>
+      .comments{margin:30px;padding:10px;background:#fff}
+      @media screen and (max-width:800px){.comments{margin:auto;padding:10px;background:#fff}}
+    </style>
+    <div id="vcomment" class="comment"></div> 
+<script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
+<script src="//unpkg.com/valine/dist/Valine.min.js"></script>
+<script>
+   var notify = 'false' == true ? true : false;
+   var verify = 'false' == true ? true : false;
+    window.onload = function() {
+        new Valine({
+            el: '.comment',
+            notify: notify,
+            verify: verify,
+            app_id: "BzKGcTo4UNtT4IpaATerPTx5-gzGzoHsz",
+            app_key: "NnCOVTUuM18eE3QQgQK71pq5",
+            placeholder: "Life is better when shared!",
+            avatar:"mm"
+        });
+    }
+</script>
+  </section>
+
+
+  
+  
   
 
-    
+  
+  <div id="SOHUCS" sid="一种允许多数节点不可用的Quorum策略" ></div> 
+<script charset="utf-8" type="text/javascript" src="//changyan.sohu.com/upload/changyan.js" ></script>
+<script type="text/javascript">
+    window.changyan.api.config({
+        appid: "‘cytfUlp6W’",
+        conf: "‘5214a48c1c6236d3ecb73fb5f9379ec0’"
+    });
+</script>
+</script>
+  
+
+  
+
+  
+
 
 
           </div>
@@ -270,8 +531,8 @@
 	var yiliaConfig = {
 		mathjax: false,
 		isHome: false,
-		isPost: false,
-		isArchive: true,
+		isPost: true,
+		isArchive: false,
 		isTag: false,
 		isCategory: false,
 		open_in_new: false,

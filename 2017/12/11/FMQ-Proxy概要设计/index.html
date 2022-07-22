@@ -16,7 +16,7 @@
 <meta property="og:site_name" content="陈大白的博客">
 <meta property="og:description" content="FMQ Proxy用来支持多语言接入FMQ，主要功能为在应用层提供HTTP协议到自定义协议的转换">
 <meta property="og:locale" content="zh-CN">
-<meta property="og:updated_time" content="2020-08-01T04:14:57.798Z">
+<meta property="og:updated_time" content="2022-07-22T03:27:39.262Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="FMQ Proxy概要设计">
 <meta name="twitter:description" content="FMQ Proxy用来支持多语言接入FMQ，主要功能为在应用层提供HTTP协议到自定义协议的转换">
@@ -289,7 +289,7 @@
 <tr>
 <td style="text-align:center">Host</td>
 <td style="text-align:center">固定值</td>
-<td style="text-align:left"><a href="http://proxy.fmq.jdfin.com" target="_blank" rel="noopener">proxy.fmq.jdfin.com</a></td>
+<td style="text-align:left">请求域名</td>
 </tr>
 <tr>
 <td style="text-align:center">Timestamp</td>
@@ -452,18 +452,21 @@
 </ul>
 <h3 id="broker-zip-变更"><a class="header-anchor" href="#broker-zip-变更">¶</a>broker_zip 变更</h3>
 <ul>
-<li>添加新broker
+<li>
+<p>添加新broker</p>
 <ul>
 <li>判断是否在zk存活列表，在的话新增连接</li>
 <li>判断是否存在此group，不存在则新增</li>
 </ul>
 </li>
-<li>更改原有broker
+<li>
+<p>更改原有broker</p>
 <ul>
 <li>通知group变更权限</li>
 </ul>
 </li>
-<li>删除broker
+<li>
+<p>删除broker</p>
 <ul>
 <li>通知group变更权限</li>
 <li>移除原有broker</li>
@@ -707,7 +710,7 @@
   <div class="outer">
     <div id="footer-info">
     	<div class="footer-left">
-    		&copy; 2021 陈大白
+    		&copy; 2022 陈大白
     	</div>
       	<div class="footer-right">
       		<span id="busuanzi_container_site_pv">
@@ -813,15 +816,11 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color4">中间件</a>
-              </li>
-             
-              <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color5">java</a>
               </li>
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color4">failover</a>
+                <a href="javascript:void(0)" class="js-tag color4">中间件</a>
               </li>
              
               <li class="article-tag-list-item">
@@ -834,6 +833,10 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
              
               <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color3">线程</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color4">failover</a>
               </li>
              
               <li class="article-tag-list-item">
@@ -857,11 +860,15 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color4">JVM</a>
+                <a href="javascript:void(0)" class="js-tag color1">一致性算法</a>
               </li>
              
               <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color2">锁</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color4">JVM</a>
               </li>
              
               <li class="article-tag-list-item">
